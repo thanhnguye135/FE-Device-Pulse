@@ -6,7 +6,7 @@ import { Card, Space, Typography, Spin, Alert } from "antd";
 // Components
 import { AppLayout } from "../components/AppLayout";
 import { ApiResponses } from "../components/ApiResponses";
-import { UserManagement } from "../components/EnhancedUserManagement";
+import { UserManagement } from "../components/UserManagement";
 
 // Hooks
 import { useConfig } from "../hooks/useConfig";
