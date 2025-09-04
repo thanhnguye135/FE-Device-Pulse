@@ -388,7 +388,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     }
   };
 
-  const loadUserData = async (userId: string) => {
+  const loadUserData = async (deviceId: string) => {
     const baseUrl =
       environment === "production"
         ? process.env.NEXT_PUBLIC_PROD_API_URL
@@ -396,14 +396,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
     const headers = {
       "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+      "x-device-id": deviceId,
       "Content-Type": "application/json",
     };
 
-    console.log("Loading detailed user data for userId:", userId);
+    console.log("Loading detailed user data for deviceId:", deviceId);
 
     try {
-      // Build query parameters for each API call
-      const filesParams = new URLSearchParams({ userId });
+      // Build query parameters for each API call (without deviceId - now in header)
+      const filesParams = new URLSearchParams();
       if (filesFilter.keyword)
         filesParams.append("keyword", filesFilter.keyword);
       if (filesFilter.fieldQuery)
@@ -412,7 +413,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         filesParams.append("fieldSort", filesFilter.fieldSort);
       if (filesFilter.sort) filesParams.append("sort", filesFilter.sort);
 
-      const foldersParams = new URLSearchParams({ userId });
+      const foldersParams = new URLSearchParams();
       if (foldersFilter.keyword)
         foldersParams.append("keyword", foldersFilter.keyword);
       if (foldersFilter.fieldQuery)
@@ -421,47 +422,39 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         foldersParams.append("fieldSort", foldersFilter.fieldSort);
       if (foldersFilter.sort) foldersParams.append("sort", foldersFilter.sort);
 
-      const transcriptsParams = new URLSearchParams({ userId });
+      const transcriptsParams = new URLSearchParams();
       if (transcriptsFilter.isHighlighted)
         transcriptsParams.append(
           "isHighlighted",
           transcriptsFilter.isHighlighted
         );
 
-      const messagesNoteParams = new URLSearchParams({ userId });
+      const messagesNoteParams = new URLSearchParams();
       if (messagesFilter.fileId)
         messagesNoteParams.append("fileId", messagesFilter.fileId);
 
-      const messagesGlobalParams = new URLSearchParams({ userId });
+      const messagesGlobalParams = new URLSearchParams();
 
-      // Load all user data in parallel
-      const [
-        filesRes,
-        foldersRes,
-        transcriptsRes,
-        messagesNoteRes,
-        messagesGlobalRes,
-      ] = await Promise.allSettled([
-        fetch(`${baseUrl}/api/v1/admin/files?${filesParams}`, {
-          headers,
-        }),
-        fetch(`${baseUrl}/api/v1/admin/folders?${foldersParams}`, {
-          headers,
-        }),
-        fetch(`${baseUrl}/api/v1/admin/transcripts?${transcriptsParams}`, {
-          headers,
-        }),
-        fetch(
-          `${baseUrl}/api/v1/admin/messages/chat-with-note?${messagesNoteParams}`,
-          { headers }
-        ),
-        fetch(
-          `${baseUrl}/api/v1/admin/messages/chat-global?${messagesGlobalParams}`,
-          {
+      // Load files, folders, and messages first
+      const [filesRes, foldersRes, messagesNoteRes, messagesGlobalRes] =
+        await Promise.allSettled([
+          fetch(`${baseUrl}/api/v1/admin/files?${filesParams}`, {
             headers,
-          }
-        ),
-      ]);
+          }),
+          fetch(`${baseUrl}/api/v1/admin/folders?${foldersParams}`, {
+            headers,
+          }),
+          fetch(
+            `${baseUrl}/api/v1/admin/messages/chat-with-note?${messagesNoteParams}`,
+            { headers }
+          ),
+          fetch(
+            `${baseUrl}/api/v1/admin/messages/chat-global?${messagesGlobalParams}`,
+            {
+              headers,
+            }
+          ),
+        ]);
 
       const userData: UserData = {
         files: [],
@@ -471,11 +464,42 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         messagesGlobal: [],
       };
 
-      // Process files
+      // Process files first
       if (filesRes.status === "fulfilled" && filesRes.value.ok) {
         const filesData = await filesRes.value.json();
         userData.files = filesData.data?.items || filesData.data || [];
         console.log("Files loaded:", userData.files.length);
+
+        // Load transcripts for each file
+        if (userData.files.length > 0) {
+          try {
+            const transcriptPromises = userData.files.slice(0, 5).map(
+              (
+                file: any // Limit to first 5 files to avoid too many requests
+              ) =>
+                fetch(
+                  `${baseUrl}/api/v1/admin/transcripts?fileId=${file.id}&${transcriptsParams}`,
+                  {
+                    headers,
+                  }
+                ).then((res) => (res.ok ? res.json() : null))
+            );
+
+            const transcriptResults = await Promise.allSettled(
+              transcriptPromises
+            );
+            userData.transcripts = transcriptResults
+              .filter(
+                (result): result is PromiseFulfilledResult<any> =>
+                  result.status === "fulfilled" && result.value
+              )
+              .flatMap((result) => result.value.data?.data || []);
+
+            console.log("Transcripts loaded:", userData.transcripts.length);
+          } catch (error) {
+            console.log("Error loading transcripts:", error);
+          }
+        }
       } else {
         console.log(
           "Files request failed:",
@@ -496,21 +520,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           foldersRes.status === "fulfilled"
             ? foldersRes.value.status
             : foldersRes.reason
-        );
-      }
-
-      // Process transcripts
-      if (transcriptsRes.status === "fulfilled" && transcriptsRes.value.ok) {
-        const transcriptsData = await transcriptsRes.value.json();
-        userData.transcripts =
-          transcriptsData.data?.items || transcriptsData.data || [];
-        console.log("Transcripts loaded:", userData.transcripts.length);
-      } else {
-        console.log(
-          "Transcripts request failed:",
-          transcriptsRes.status === "fulfilled"
-            ? transcriptsRes.value.status
-            : transcriptsRes.reason
         );
       }
 
@@ -563,7 +572,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     if (!selectedUser) return;
     try {
       setUserDetailsLoading(true);
-      const userData = await loadUserData(selectedUser.id);
+      const userData = await loadUserData(selectedUser.deviceId);
       setUserData(userData);
       message.success("Data refreshed successfully");
     } catch (error) {
@@ -584,8 +593,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       // Set basic user details (just the raw data)
       setUserDetails(user);
 
-      // Load comprehensive user data using userId
-      const userData = await loadUserData(user.id);
+      // Load comprehensive user data using deviceId
+      const userData = await loadUserData(user.deviceId);
       setUserData(userData);
 
       console.log("User details loaded successfully");
@@ -1073,11 +1082,28 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     userData.files,
                     [
                       {
+                        title: "ID",
+                        dataIndex: "id",
+                        key: "id",
+                        ellipsis: true,
+                        width: 120,
+                        render: (id: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {id?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
                         title: "Title",
                         dataIndex: "title",
                         key: "title",
                         ellipsis: true,
                         width: 200,
+                        render: (title: string) => (
+                          <Tooltip title={title}>
+                            <Text strong>{title}</Text>
+                          </Tooltip>
+                        ),
                       },
                       {
                         title: "Status",
@@ -1105,11 +1131,53 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                         width: 80,
                       },
                       {
-                        title: "Filename",
+                        title: "Original Filename",
                         dataIndex: "originalFilename",
                         key: "originalFilename",
                         ellipsis: true,
-                        width: 150,
+                        width: 180,
+                        render: (filename: string) => (
+                          <Text code>{filename}</Text>
+                        ),
+                      },
+                      {
+                        title: "Summary",
+                        dataIndex: "summary",
+                        key: "summary",
+                        ellipsis: true,
+                        width: 250,
+                        render: (summary: string) => (
+                          <Tooltip title={summary}>
+                            <Text type="secondary" style={{ fontSize: "12px" }}>
+                              {summary?.substring(0, 80)}...
+                            </Text>
+                          </Tooltip>
+                        ),
+                      },
+                      {
+                        title: "User ID",
+                        dataIndex: "userId",
+                        key: "userId",
+                        width: 120,
+                        render: (userId: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {userId?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Folder ID",
+                        dataIndex: "folderId",
+                        key: "folderId",
+                        width: 120,
+                        render: (folderId: string) =>
+                          folderId ? (
+                            <Text code style={{ fontSize: "10px" }}>
+                              {folderId?.substring(0, 8)}...
+                            </Text>
+                          ) : (
+                            <Text type="secondary">No Folder</Text>
+                          ),
                       },
                       {
                         title: "Created",
@@ -1120,13 +1188,22 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                             <div style={{ fontSize: "12px" }}>
                               {formatDate(date)}
                             </div>
-                            <Text
-                              type="secondary"
-                              style={{ fontSize: "10px" }}
-                            ></Text>
                           </div>
                         ),
-                        width: 120,
+                        width: 180,
+                      },
+                      {
+                        title: "Updated",
+                        dataIndex: "updatedAt",
+                        key: "updatedAt",
+                        render: (date: string) => (
+                          <div>
+                            <div style={{ fontSize: "12px" }}>
+                              {formatDate(date)}
+                            </div>
+                          </div>
+                        ),
+                        width: 180,
                       },
                     ],
                     "files",
@@ -1149,6 +1226,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   {renderDataTable(
                     userData.folders,
                     [
+                      {
+                        title: "ID",
+                        dataIndex: "id",
+                        key: "id",
+                        width: 120,
+                        render: (id: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {id?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
                       {
                         title: "Name",
                         dataIndex: "name",
@@ -1193,6 +1281,34 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                         dataIndex: "position",
                         key: "position",
                         width: 80,
+                        render: (position: number) => (
+                          <Tag color="blue">{position}</Tag>
+                        ),
+                      },
+                      {
+                        title: "User ID",
+                        dataIndex: "userId",
+                        key: "userId",
+                        width: 120,
+                        render: (userId: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {userId?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Parent Folder",
+                        dataIndex: "parentFolderId",
+                        key: "parentFolderId",
+                        width: 120,
+                        render: (parentFolderId: string) =>
+                          parentFolderId ? (
+                            <Text code style={{ fontSize: "10px" }}>
+                              {parentFolderId?.substring(0, 8)}...
+                            </Text>
+                          ) : (
+                            <Text type="secondary">Root</Text>
+                          ),
                       },
                       {
                         title: "Created",
@@ -1203,13 +1319,22 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                             <div style={{ fontSize: "12px" }}>
                               {formatDate(date)}
                             </div>
-                            <Text
-                              type="secondary"
-                              style={{ fontSize: "10px" }}
-                            ></Text>
                           </div>
                         ),
-                        width: 120,
+                        width: 180,
+                      },
+                      {
+                        title: "Updated",
+                        dataIndex: "updatedAt",
+                        key: "updatedAt",
+                        render: (date: string) => (
+                          <div>
+                            <div style={{ fontSize: "12px" }}>
+                              {formatDate(date)}
+                            </div>
+                          </div>
+                        ),
+                        width: 180,
                       },
                     ],
                     "folders",
@@ -1232,21 +1357,93 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   {renderDataTable(
                     userData.transcripts,
                     [
-                      { title: "Title", dataIndex: "title", key: "title" },
                       {
-                        title: "Duration",
-                        dataIndex: "duration",
-                        key: "duration",
+                        title: "ID",
+                        dataIndex: "id",
+                        key: "id",
+                        width: 120,
+                        render: (id: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {id?.substring(0, 8)}...
+                          </Text>
+                        ),
                       },
                       {
-                        title: "Language",
-                        dataIndex: "language",
-                        key: "language",
+                        title: "File ID",
+                        dataIndex: "fileId",
+                        key: "fileId",
+                        width: 120,
+                        render: (fileId: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {fileId?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Speaker",
+                        dataIndex: "speakerName",
+                        key: "speakerName",
+                        width: 100,
+                        render: (speakerName: string) => (
+                          <Tag color="blue">{speakerName || "Unknown"}</Tag>
+                        ),
+                      },
+                      {
+                        title: "Text",
+                        dataIndex: "text",
+                        key: "text",
+                        ellipsis: true,
+                        width: 300,
+                        render: (text: string) => (
+                          <Tooltip title={text}>
+                            <Text>{text?.substring(0, 100)}...</Text>
+                          </Tooltip>
+                        ),
+                      },
+                      {
+                        title: "Time Range",
+                        key: "timeRange",
+                        width: 120,
+                        render: (record: any) => (
+                          <Text code>
+                            {record.startTime}s - {record.endTime}s
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Highlighted",
+                        dataIndex: "isHighlighted",
+                        key: "isHighlighted",
+                        width: 100,
+                        render: (isHighlighted: boolean) => (
+                          <Tag color={isHighlighted ? "gold" : "default"}>
+                            {isHighlighted ? "Yes" : "No"}
+                          </Tag>
+                        ),
+                      },
+                      {
+                        title: "Order",
+                        dataIndex: "orderIndex",
+                        key: "orderIndex",
+                        width: 80,
+                        render: (orderIndex: number) => (
+                          <Tag color="purple">{orderIndex}</Tag>
+                        ),
+                      },
+                      {
+                        title: "Comments",
+                        dataIndex: "commentCount",
+                        key: "commentCount",
+                        width: 80,
+                        render: (commentCount: number) => (
+                          <Badge count={commentCount} />
+                        ),
                       },
                       {
                         title: "Created",
                         dataIndex: "createdAt",
                         key: "createdAt",
+                        width: 180,
                         render: (date: string) => formatDate(date),
                       },
                     ],
@@ -1271,16 +1468,93 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     userData.messagesWithNote,
                     [
                       {
-                        title: "Message",
+                        title: "ID",
+                        dataIndex: "id",
+                        key: "id",
+                        width: 120,
+                        render: (id: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {id?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Content",
                         dataIndex: "content",
                         key: "content",
                         ellipsis: true,
+                        width: 350,
+                        render: (content: string) => (
+                          <Tooltip title={content}>
+                            <Text>{content?.substring(0, 150)}...</Text>
+                          </Tooltip>
+                        ),
                       },
-                      { title: "Note ID", dataIndex: "noteId", key: "noteId" },
+                      {
+                        title: "Sender",
+                        dataIndex: "sendFrom",
+                        key: "sendFrom",
+                        width: 100,
+                        render: (sendFrom: string) => (
+                          <Tag
+                            color={sendFrom === "ASSISTANT" ? "green" : "blue"}
+                          >
+                            {sendFrom}
+                          </Tag>
+                        ),
+                      },
+                      {
+                        title: "User ID",
+                        dataIndex: "userId",
+                        key: "userId",
+                        width: 120,
+                        render: (userId: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {userId?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Question ID",
+                        dataIndex: "questionId",
+                        key: "questionId",
+                        width: 120,
+                        render: (questionId: string) =>
+                          questionId ? (
+                            <Text code style={{ fontSize: "10px" }}>
+                              {questionId?.substring(0, 8)}...
+                            </Text>
+                          ) : (
+                            <Text type="secondary">N/A</Text>
+                          ),
+                      },
+                      {
+                        title: "Conversation ID",
+                        dataIndex: "conversationId",
+                        key: "conversationId",
+                        width: 120,
+                        render: (conversationId: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {conversationId?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Visible",
+                        dataIndex: "isShow",
+                        key: "isShow",
+                        width: 80,
+                        render: (isShow: boolean) => (
+                          <Tag color={isShow ? "green" : "red"}>
+                            {isShow ? "Yes" : "No"}
+                          </Tag>
+                        ),
+                      },
                       {
                         title: "Created",
                         dataIndex: "createdAt",
                         key: "createdAt",
+                        width: 180,
                         render: (date: string) => formatDate(date),
                       },
                     ],
@@ -1305,16 +1579,93 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     userData.messagesGlobal,
                     [
                       {
-                        title: "Message",
+                        title: "ID",
+                        dataIndex: "id",
+                        key: "id",
+                        width: 120,
+                        render: (id: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {id?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Content",
                         dataIndex: "content",
                         key: "content",
                         ellipsis: true,
+                        width: 350,
+                        render: (content: string) => (
+                          <Tooltip title={content}>
+                            <Text>{content?.substring(0, 150)}...</Text>
+                          </Tooltip>
+                        ),
                       },
-                      { title: "Type", dataIndex: "type", key: "type" },
+                      {
+                        title: "Sender",
+                        dataIndex: "sendFrom",
+                        key: "sendFrom",
+                        width: 100,
+                        render: (sendFrom: string) => (
+                          <Tag
+                            color={sendFrom === "ASSISTANT" ? "green" : "blue"}
+                          >
+                            {sendFrom}
+                          </Tag>
+                        ),
+                      },
+                      {
+                        title: "User ID",
+                        dataIndex: "userId",
+                        key: "userId",
+                        width: 120,
+                        render: (userId: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {userId?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Question ID",
+                        dataIndex: "questionId",
+                        key: "questionId",
+                        width: 120,
+                        render: (questionId: string) =>
+                          questionId ? (
+                            <Text code style={{ fontSize: "10px" }}>
+                              {questionId?.substring(0, 8)}...
+                            </Text>
+                          ) : (
+                            <Text type="secondary">N/A</Text>
+                          ),
+                      },
+                      {
+                        title: "Conversation ID",
+                        dataIndex: "conversationId",
+                        key: "conversationId",
+                        width: 120,
+                        render: (conversationId: string) => (
+                          <Text code style={{ fontSize: "10px" }}>
+                            {conversationId?.substring(0, 8)}...
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Visible",
+                        dataIndex: "isShow",
+                        key: "isShow",
+                        width: 80,
+                        render: (isShow: boolean) => (
+                          <Tag color={isShow ? "green" : "red"}>
+                            {isShow ? "Yes" : "No"}
+                          </Tag>
+                        ),
+                      },
                       {
                         title: "Created",
                         dataIndex: "createdAt",
                         key: "createdAt",
+                        width: 180,
                         render: (date: string) => formatDate(date),
                       },
                     ],
