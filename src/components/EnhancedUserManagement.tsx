@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useForm, useWatch, Control, FieldValues } from "react-hook-form";
 import {
   Card,
   Table,
@@ -17,8 +18,6 @@ import {
   message,
   Spin,
   Tabs,
-  Statistic,
-  Divider,
   Badge,
   Empty,
   Select,
@@ -32,11 +31,12 @@ import {
   InfoCircleOutlined,
   FileOutlined,
   FolderOutlined,
+  EditOutlined,
+  FilterOutlined,
+  RollbackOutlined,
   AudioOutlined,
   MessageOutlined,
-  EditOutlined,
   DatabaseOutlined,
-  FilterOutlined,
 } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
@@ -45,7 +45,8 @@ const { TabPane } = Tabs;
 const { Option } = Select;
 
 interface User {
-  id: string;
+  id?: string;
+  userid?: string;
   deviceId: string;
   createdAt: string;
   updatedAt?: string;
@@ -61,188 +62,1028 @@ interface UserData {
   messagesGlobal: any[];
 }
 
+// Filter form interfaces for React Hook Form
+interface FilesFilterForm {
+  page: string;
+  limit: string;
+  folderId: string;
+  fieldSort: string;
+  sort: string;
+  keyword: string;
+  fieldQuery: string;
+  id: string;
+  include: string;
+}
+
+interface FoldersFilterForm {
+  page: string;
+  limit: string;
+  fieldSort: string;
+  sort: string;
+  keyword: string;
+  fieldQuery: string;
+  id: string;
+}
+
+interface TranscriptsFilterForm {
+  fileId: string;
+  isHighlighted: string;
+  cursor: string;
+  limit: string;
+}
+
+interface MessagesFilterForm {
+  page: string;
+  limit: string;
+  fileId: string;
+}
+
+interface MessagesGlobalFilterForm {
+  page: string;
+  limit: string;
+}
+
 // Helper function to format dates in original ISO format
 const formatDate = (date: string | null | undefined) => {
   if (!date) return "N/A";
   return date;
 };
 
+// Enhanced Filter Component using React Hook Form
+interface FilterComponentProps<T extends FieldValues> {
+  filterType:
+    | "files"
+    | "folders"
+    | "transcripts"
+    | "messages"
+    | "messages-global";
+  control: Control<T>;
+  onSearch: (data: T) => void;
+  onReset: () => void;
+  isLoading?: boolean;
+}
+
+const FilesFilterComponent: React.FC<FilterComponentProps<FilesFilterForm>> = ({
+  control,
+  onSearch,
+  onReset,
+  isLoading,
+}) => {
+  const watchedValues = useWatch({ control });
+
+  // Debounced search effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearch(watchedValues as FilesFilterForm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [watchedValues, onSearch]);
+
+  return (
+    <div>
+      <Row gutter={8} style={{ marginBottom: 8 }}>
+        <Col span={4}>
+          <Input
+            placeholder="Search keyword"
+            {...(control as any).register("keyword")}
+            prefix={<SearchOutlined />}
+          />
+        </Col>
+        <Col span={4}>
+          <Select
+            placeholder="Search field"
+            style={{ width: "100%" }}
+            allowClear
+            {...(control as any).register("fieldQuery")}
+          >
+            <Option value="title">Title</Option>
+            <Option value="summary">Summary</Option>
+            <Option value="originalFilename">Filename</Option>
+            <Option value="description">Description</Option>
+          </Select>
+        </Col>
+        <Col span={3}>
+          <Input
+            placeholder="Folder ID"
+            {...(control as any).register("folderId")}
+          />
+        </Col>
+        <Col span={3}>
+          <Input placeholder="File ID" {...(control as any).register("id")} />
+        </Col>
+        <Col span={4}>
+          <Select
+            placeholder="Sort by"
+            style={{ width: "100%" }}
+            allowClear
+            {...(control as any).register("fieldSort")}
+          >
+            <Option value="createdAt">Created</Option>
+            <Option value="updatedAt">Updated</Option>
+            <Option value="title">Title</Option>
+            <Option value="duration">Duration</Option>
+          </Select>
+        </Col>
+        <Col span={3}>
+          <Select
+            placeholder="Order"
+            style={{ width: "100%" }}
+            allowClear
+            {...(control as any).register("sort")}
+          >
+            <Option value="asc">Ascending</Option>
+            <Option value="desc">Descending</Option>
+          </Select>
+        </Col>
+        <Col span={3}>
+          <Button
+            icon={<SearchOutlined />}
+            onClick={() => onSearch(watchedValues as FilesFilterForm)}
+            type="primary"
+            loading={isLoading}
+          >
+            Find
+          </Button>
+        </Col>
+      </Row>
+      <Row gutter={8} style={{ marginBottom: 16 }}>
+        <Col span={4}>
+          <Select
+            placeholder="Include data"
+            style={{ width: "100%" }}
+            allowClear
+            {...(control as any).register("include")}
+          >
+            <Option value="audio">Audio</Option>
+            <Option value="text">Text</Option>
+            <Option value="speakers">Speakers</Option>
+            <Option value="actionItems">Action Items</Option>
+            <Option value="audio,text">Audio + Text</Option>
+            <Option value="audio,text,speakers">All</Option>
+          </Select>
+        </Col>
+        <Col span={3}>
+          <Input
+            placeholder="Page"
+            type="number"
+            {...(control as any).register("page")}
+          />
+        </Col>
+        <Col span={3}>
+          <Input
+            placeholder="Limit"
+            type="number"
+            {...(control as any).register("limit")}
+          />
+        </Col>
+        <Col span={3}>
+          <Button icon={<RollbackOutlined />} onClick={onReset}>
+            Reset
+          </Button>
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+const FoldersFilterComponent: React.FC<
+  FilterComponentProps<FoldersFilterForm>
+> = ({ control, onSearch, onReset, isLoading }) => {
+  const watchedValues = useWatch({ control });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearch(watchedValues as FoldersFilterForm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [watchedValues, onSearch]);
+
+  return (
+    <div>
+      <Row gutter={8} style={{ marginBottom: 8 }}>
+        <Col span={4}>
+          <Input
+            placeholder="Search keyword"
+            {...(control as any).register("keyword")}
+            prefix={<SearchOutlined />}
+          />
+        </Col>
+        <Col span={4}>
+          <Select
+            placeholder="Search field"
+            style={{ width: "100%" }}
+            allowClear
+            {...(control as any).register("fieldQuery")}
+          >
+            <Option value="name">Name</Option>
+            <Option value="icon">Icon</Option>
+          </Select>
+        </Col>
+        <Col span={3}>
+          <Input placeholder="Folder ID" {...(control as any).register("id")} />
+        </Col>
+        <Col span={4}>
+          <Select
+            placeholder="Sort by"
+            style={{ width: "100%" }}
+            allowClear
+            {...(control as any).register("fieldSort")}
+          >
+            <Option value="createdAt">Created</Option>
+            <Option value="updatedAt">Updated</Option>
+            <Option value="name">Name</Option>
+            <Option value="position">Position</Option>
+          </Select>
+        </Col>
+        <Col span={3}>
+          <Select
+            placeholder="Order"
+            style={{ width: "100%" }}
+            allowClear
+            {...(control as any).register("sort")}
+          >
+            <Option value="asc">Ascending</Option>
+            <Option value="desc">Descending</Option>
+          </Select>
+        </Col>
+        <Col span={3}>
+          <Button
+            icon={<SearchOutlined />}
+            onClick={() => onSearch(watchedValues as FoldersFilterForm)}
+            type="primary"
+            loading={isLoading}
+          >
+            Find
+          </Button>
+        </Col>
+      </Row>
+      <Row gutter={8} style={{ marginBottom: 16 }}>
+        <Col span={3}>
+          <Input
+            placeholder="Page"
+            type="number"
+            {...(control as any).register("page")}
+          />
+        </Col>
+        <Col span={3}>
+          <Input
+            placeholder="Limit"
+            type="number"
+            {...(control as any).register("limit")}
+          />
+        </Col>
+        <Col span={3}>
+          <Button icon={<RollbackOutlined />} onClick={onReset}>
+            Reset
+          </Button>
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+const TranscriptsFilterComponent: React.FC<
+  FilterComponentProps<TranscriptsFilterForm>
+> = ({ control, onSearch, onReset, isLoading }) => {
+  const watchedValues = useWatch({ control });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearch(watchedValues as TranscriptsFilterForm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [watchedValues, onSearch]);
+
+  return (
+    <div>
+      <Row gutter={8} style={{ marginBottom: 8 }}>
+        <Col span={4}>
+          <Input
+            placeholder="File ID (Required)"
+            {...(control as any).register("fileId")}
+            prefix={<FileOutlined />}
+          />
+        </Col>
+        <Col span={4}>
+          <Select
+            placeholder="Filter by highlights"
+            style={{ width: "100%" }}
+            allowClear
+            {...(control as any).register("isHighlighted")}
+          >
+            <Option value="true">Highlighted only</Option>
+            <Option value="false">Non-highlighted</Option>
+          </Select>
+        </Col>
+        <Col span={4}>
+          <Input
+            placeholder="Cursor (Order Index)"
+            {...(control as any).register("cursor")}
+          />
+        </Col>
+        <Col span={3}>
+          <Input
+            placeholder="Limit (1-100)"
+            type="number"
+            min="1"
+            max="100"
+            {...(control as any).register("limit")}
+          />
+        </Col>
+        <Col span={3}>
+          <Button
+            icon={<SearchOutlined />}
+            onClick={() => onSearch(watchedValues as TranscriptsFilterForm)}
+            type="primary"
+            loading={isLoading}
+          >
+            Find
+          </Button>
+        </Col>
+        <Col span={3}>
+          <Button icon={<RollbackOutlined />} onClick={onReset}>
+            Reset
+          </Button>
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+const MessagesFilterComponent: React.FC<
+  FilterComponentProps<MessagesFilterForm>
+> = ({ control, onSearch, onReset, isLoading }) => {
+  const watchedValues = useWatch({ control });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearch(watchedValues as MessagesFilterForm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [watchedValues, onSearch]);
+
+  return (
+    <div>
+      <Row gutter={8} style={{ marginBottom: 8 }}>
+        <Col span={4}>
+          <Input
+            placeholder="Filter by File ID"
+            {...(control as any).register("fileId")}
+            prefix={<FileOutlined />}
+          />
+        </Col>
+        <Col span={3}>
+          <Input
+            placeholder="Page"
+            type="number"
+            {...(control as any).register("page")}
+          />
+        </Col>
+        <Col span={3}>
+          <Input
+            placeholder="Limit"
+            type="number"
+            {...(control as any).register("limit")}
+          />
+        </Col>
+        <Col span={3}>
+          <Button
+            icon={<SearchOutlined />}
+            onClick={() => onSearch(watchedValues as MessagesFilterForm)}
+            type="primary"
+            loading={isLoading}
+          >
+            Find
+          </Button>
+        </Col>
+        <Col span={3}>
+          <Button icon={<RollbackOutlined />} onClick={onReset}>
+            Reset
+          </Button>
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+const MessagesGlobalFilterComponent: React.FC<
+  FilterComponentProps<MessagesGlobalFilterForm>
+> = ({ control, onSearch, onReset, isLoading }) => {
+  const watchedValues = useWatch({ control });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearch(watchedValues as MessagesGlobalFilterForm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [watchedValues, onSearch]);
+
+  return (
+    <div>
+      <Row gutter={8} style={{ marginBottom: 8 }}>
+        <Col span={3}>
+          <Input
+            placeholder="Page"
+            type="number"
+            {...(control as any).register("page")}
+          />
+        </Col>
+        <Col span={3}>
+          <Input
+            placeholder="Limit"
+            type="number"
+            {...(control as any).register("limit")}
+          />
+        </Col>
+        <Col span={3}>
+          <Button
+            icon={<SearchOutlined />}
+            onClick={() => onSearch(watchedValues as MessagesGlobalFilterForm)}
+            type="primary"
+            loading={isLoading}
+          >
+            Find
+          </Button>
+        </Col>
+        <Col span={3}>
+          <Button icon={<RollbackOutlined />} onClick={onReset}>
+            Reset
+          </Button>
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+// Enhanced Filter Renderer using React Hook Form
+const renderFiltersWithHookForm = (
+  filterType:
+    | "files"
+    | "folders"
+    | "transcripts"
+    | "messages"
+    | "messages-global",
+  control: Control<any>,
+  onSearch: (data: any) => void,
+  onReset: () => void,
+  isLoading?: boolean
+) => {
+  const FilterComponent = () => {
+    switch (filterType) {
+      case "files":
+        return (
+          <FilesFilterComponent
+            filterType={filterType}
+            control={control}
+            onSearch={onSearch}
+            onReset={onReset}
+            isLoading={isLoading}
+          />
+        );
+      case "folders":
+        return (
+          <FoldersFilterComponent
+            filterType={filterType}
+            control={control}
+            onSearch={onSearch}
+            onReset={onReset}
+            isLoading={isLoading}
+          />
+        );
+      case "transcripts":
+        return (
+          <TranscriptsFilterComponent
+            filterType={filterType}
+            control={control}
+            onSearch={onSearch}
+            onReset={onReset}
+            isLoading={isLoading}
+          />
+        );
+      case "messages":
+        return (
+          <MessagesFilterComponent
+            filterType={filterType}
+            control={control}
+            onSearch={onSearch}
+            onReset={onReset}
+            isLoading={isLoading}
+          />
+        );
+      case "messages-global":
+        return (
+          <MessagesGlobalFilterComponent
+            filterType={filterType}
+            control={control}
+            onSearch={onSearch}
+            onReset={onReset}
+            isLoading={isLoading}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Card size="small" style={{ marginBottom: 8 }}>
+      <Space style={{ width: "100%", justifyContent: "space-between" }}>
+        <Space>
+          <FilterOutlined />
+          <Text strong>Filters</Text>
+        </Space>
+      </Space>
+      <FilterComponent />
+    </Card>
+  );
+};
+
 // Helper function to render filter controls
 const renderFilters = (
-  filterType: "files" | "folders" | "transcripts" | "messages",
+  filterType:
+    | "files"
+    | "folders"
+    | "transcripts"
+    | "messages"
+    | "messages-global",
   filters: any,
   setFilters: any,
-  onRefresh: () => void
+  onFilterSearch: () => void,
+  onFilterReset: () => void,
+  context?: { selectedUser?: User | null; viewMode?: string }
 ) => {
   const getFilterOptions = () => {
     switch (filterType) {
       case "files":
         return (
-          <Row gutter={8} style={{ marginBottom: 16 }}>
-            <Col span={6}>
-              <Input
-                placeholder="Search keyword"
-                value={filters.keyword}
-                onChange={(e) =>
-                  setFilters({ ...filters, keyword: e.target.value })
-                }
-                prefix={<SearchOutlined />}
-              />
-            </Col>
-            <Col span={4}>
-              <Select
-                placeholder="Search field"
-                value={filters.fieldQuery}
-                onChange={(value) =>
-                  setFilters({ ...filters, fieldQuery: value })
-                }
-                style={{ width: "100%" }}
-                allowClear
-              >
-                <Option value="title">Title</Option>
-                <Option value="summary">Summary</Option>
-                <Option value="originalFilename">Filename</Option>
-                <Option value="description">Description</Option>
-              </Select>
-            </Col>
-            <Col span={4}>
-              <Select
-                placeholder="Sort by"
-                value={filters.fieldSort}
-                onChange={(value) =>
-                  setFilters({ ...filters, fieldSort: value })
-                }
-                style={{ width: "100%" }}
-                allowClear
-              >
-                <Option value="createdAt">Created</Option>
-                <Option value="updatedAt">Updated</Option>
-                <Option value="title">Title</Option>
-              </Select>
-            </Col>
-            <Col span={3}>
-              <Select
-                placeholder="Order"
-                value={filters.sort}
-                onChange={(value) => setFilters({ ...filters, sort: value })}
-                style={{ width: "100%" }}
-                allowClear
-              >
-                <Option value="asc">Ascending</Option>
-                <Option value="desc">Descending</Option>
-              </Select>
-            </Col>
-            <Col span={3}>
-              <Button icon={<ReloadOutlined />} onClick={onRefresh}>
-                Refresh
-              </Button>
-            </Col>
-          </Row>
+          <div>
+            <Row gutter={8} style={{ marginBottom: 8 }}>
+              <Col span={4}>
+                <Input
+                  placeholder="Search keyword"
+                  value={filters.keyword}
+                  onChange={(e) =>
+                    setFilters({ ...filters, keyword: e.target.value })
+                  }
+                  prefix={<SearchOutlined />}
+                />
+              </Col>
+              <Col span={4}>
+                <Select
+                  placeholder="Search field"
+                  value={filters.fieldQuery}
+                  onChange={(value) => {
+                    setFilters({ ...filters, fieldQuery: value });
+                    // Immediate effect for dropdown selections
+                    if (
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 100);
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                  allowClear
+                >
+                  <Option value="title">Title</Option>
+                  <Option value="summary">Summary</Option>
+                  <Option value="originalFilename">Filename</Option>
+                  <Option value="description">Description</Option>
+                </Select>
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="Folder ID"
+                  value={filters.folderId}
+                  onChange={(e) =>
+                    setFilters({ ...filters, folderId: e.target.value })
+                  }
+                />
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="File ID"
+                  value={filters.id}
+                  onChange={(e) =>
+                    setFilters({ ...filters, id: e.target.value })
+                  }
+                />
+              </Col>
+              <Col span={4}>
+                <Select
+                  placeholder="Sort by"
+                  value={filters.fieldSort}
+                  onChange={(value) => {
+                    setFilters({ ...filters, fieldSort: value });
+                    // Immediate effect for dropdown selections
+                    if (
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 100);
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                  allowClear
+                >
+                  <Option value="createdAt">Created</Option>
+                  <Option value="updatedAt">Updated</Option>
+                  <Option value="title">Title</Option>
+                  <Option value="duration">Duration</Option>
+                </Select>
+              </Col>
+              <Col span={3}>
+                <Select
+                  placeholder="Order"
+                  value={filters.sort}
+                  onChange={(value) => {
+                    setFilters({ ...filters, sort: value });
+                    // Immediate effect for dropdown selections
+                    if (
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 100);
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                  allowClear
+                >
+                  <Option value="asc">Ascending</Option>
+                  <Option value="desc">Descending</Option>
+                </Select>
+              </Col>
+              <Col span={3}>
+                <Button
+                  icon={<SearchOutlined />}
+                  onClick={onFilterSearch}
+                  type="primary"
+                >
+                  Find
+                </Button>
+              </Col>
+            </Row>
+            <Row gutter={8} style={{ marginBottom: 16 }}>
+              <Col span={4}>
+                <Select
+                  placeholder="Include data"
+                  value={filters.include}
+                  onChange={(value) => {
+                    setFilters({ ...filters, include: value });
+                    // Immediate effect for dropdown selections
+                    if (
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 100);
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                  allowClear
+                >
+                  <Option value="audio">Audio</Option>
+                  <Option value="text">Text</Option>
+                  <Option value="speakers">Speakers</Option>
+                  <Option value="actionItems">Action Items</Option>
+                  <Option value="audio,text">Audio + Text</Option>
+                  <Option value="audio,text,speakers">All</Option>
+                </Select>
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="Page"
+                  value={filters.page}
+                  onChange={(e) =>
+                    setFilters({ ...filters, page: e.target.value })
+                  }
+                  type="number"
+                />
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="Limit"
+                  value={filters.limit}
+                  onChange={(e) =>
+                    setFilters({ ...filters, limit: e.target.value })
+                  }
+                  type="number"
+                />
+              </Col>
+              <Col span={3}>
+                <Button icon={<RollbackOutlined />} onClick={onFilterReset}>
+                  Reset
+                </Button>
+              </Col>
+            </Row>
+          </div>
         );
       case "folders":
         return (
-          <Row gutter={8} style={{ marginBottom: 16 }}>
-            <Col span={6}>
-              <Input
-                placeholder="Search keyword"
-                value={filters.keyword}
-                onChange={(e) =>
-                  setFilters({ ...filters, keyword: e.target.value })
-                }
-                prefix={<SearchOutlined />}
-              />
-            </Col>
-            <Col span={4}>
-              <Select
-                placeholder="Search field"
-                value={filters.fieldQuery}
-                onChange={(value) =>
-                  setFilters({ ...filters, fieldQuery: value })
-                }
-                style={{ width: "100%" }}
-                allowClear
-              >
-                <Option value="name">Name</Option>
-                <Option value="icon">Icon</Option>
-              </Select>
-            </Col>
-            <Col span={4}>
-              <Select
-                placeholder="Sort by"
-                value={filters.fieldSort}
-                onChange={(value) =>
-                  setFilters({ ...filters, fieldSort: value })
-                }
-                style={{ width: "100%" }}
-                allowClear
-              >
-                <Option value="createdAt">Created</Option>
-                <Option value="updatedAt">Updated</Option>
-                <Option value="name">Name</Option>
-              </Select>
-            </Col>
-            <Col span={3}>
-              <Select
-                placeholder="Order"
-                value={filters.sort}
-                onChange={(value) => setFilters({ ...filters, sort: value })}
-                style={{ width: "100%" }}
-                allowClear
-              >
-                <Option value="asc">Ascending</Option>
-                <Option value="desc">Descending</Option>
-              </Select>
-            </Col>
-            <Col span={3}>
-              <Button icon={<ReloadOutlined />} onClick={onRefresh}>
-                Refresh
-              </Button>
-            </Col>
-          </Row>
+          <div>
+            <Row gutter={8} style={{ marginBottom: 8 }}>
+              <Col span={4}>
+                <Input
+                  placeholder="Search keyword"
+                  value={filters.keyword}
+                  onChange={(e) =>
+                    setFilters({ ...filters, keyword: e.target.value })
+                  }
+                  prefix={<SearchOutlined />}
+                />
+              </Col>
+              <Col span={4}>
+                <Select
+                  placeholder="Search field"
+                  value={filters.fieldQuery}
+                  onChange={(value) => {
+                    setFilters({ ...filters, fieldQuery: value });
+                    // Immediate effect for dropdown selections
+                    if (
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 100);
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                  allowClear
+                >
+                  <Option value="name">Name</Option>
+                  <Option value="icon">Icon</Option>
+                </Select>
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="Folder ID"
+                  value={filters.id}
+                  onChange={(e) =>
+                    setFilters({ ...filters, id: e.target.value })
+                  }
+                />
+              </Col>
+              <Col span={4}>
+                <Select
+                  placeholder="Sort by"
+                  value={filters.fieldSort}
+                  onChange={(value) => {
+                    setFilters({ ...filters, fieldSort: value });
+                    // Immediate effect for dropdown selections
+                    if (
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 100);
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                  allowClear
+                >
+                  <Option value="createdAt">Created</Option>
+                  <Option value="updatedAt">Updated</Option>
+                  <Option value="name">Name</Option>
+                  <Option value="position">Position</Option>
+                </Select>
+              </Col>
+              <Col span={3}>
+                <Select
+                  placeholder="Order"
+                  value={filters.sort}
+                  onChange={(value) => {
+                    setFilters({ ...filters, sort: value });
+                    // Immediate effect for dropdown selections
+                    if (
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 100);
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                  allowClear
+                >
+                  <Option value="asc">Ascending</Option>
+                  <Option value="desc">Descending</Option>
+                </Select>
+              </Col>
+              <Col span={3}>
+                <Button
+                  icon={<SearchOutlined />}
+                  onClick={onFilterSearch}
+                  type="primary"
+                >
+                  Find
+                </Button>
+              </Col>
+            </Row>
+            <Row gutter={8} style={{ marginBottom: 16 }}>
+              <Col span={3}>
+                <Input
+                  placeholder="Page"
+                  value={filters.page}
+                  onChange={(e) =>
+                    setFilters({ ...filters, page: e.target.value })
+                  }
+                  type="number"
+                />
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="Limit"
+                  value={filters.limit}
+                  onChange={(e) =>
+                    setFilters({ ...filters, limit: e.target.value })
+                  }
+                  type="number"
+                />
+              </Col>
+              <Col span={3}>
+                <Button icon={<RollbackOutlined />} onClick={onFilterReset}>
+                  Reset
+                </Button>
+              </Col>
+            </Row>
+          </div>
         );
       case "transcripts":
         return (
-          <Row gutter={8} style={{ marginBottom: 16 }}>
-            <Col span={6}>
-              <Select
-                placeholder="Filter by highlights"
-                value={filters.isHighlighted}
-                onChange={(value) =>
-                  setFilters({ ...filters, isHighlighted: value })
-                }
-                style={{ width: "100%" }}
-                allowClear
-              >
-                <Option value="true">Highlighted only</Option>
-                <Option value="false">Non-highlighted only</Option>
-              </Select>
-            </Col>
-            <Col span={3}>
-              <Button icon={<ReloadOutlined />} onClick={onRefresh}>
-                Refresh
-              </Button>
-            </Col>
-          </Row>
+          <div>
+            <Row gutter={8} style={{ marginBottom: 8 }}>
+              <Col span={4}>
+                <Input
+                  placeholder="File ID (Required)"
+                  value={filters.fileId}
+                  onChange={(e) => {
+                    setFilters({ ...filters, fileId: e.target.value });
+                    // Immediate effect for critical fields like fileId
+                    if (
+                      e.target.value &&
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 800); // Longer delay for typing
+                    }
+                  }}
+                  prefix={<FileOutlined />}
+                />
+              </Col>
+              <Col span={4}>
+                <Select
+                  placeholder="Filter by highlights"
+                  value={filters.isHighlighted}
+                  onChange={(value) => {
+                    setFilters({ ...filters, isHighlighted: value });
+                    // Immediate effect for dropdown selections
+                    if (
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 100);
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                  allowClear
+                >
+                  <Option value="true">Highlighted only</Option>
+                  <Option value="false">Non-highlighted</Option>
+                </Select>
+              </Col>
+              <Col span={4}>
+                <Input
+                  placeholder="Cursor (Order Index)"
+                  value={filters.cursor}
+                  onChange={(e) =>
+                    setFilters({ ...filters, cursor: e.target.value })
+                  }
+                />
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="Limit (1-100)"
+                  value={filters.limit}
+                  onChange={(e) =>
+                    setFilters({ ...filters, limit: e.target.value })
+                  }
+                  type="number"
+                  min="1"
+                  max="100"
+                />
+              </Col>
+              <Col span={3}>
+                <Button
+                  icon={<SearchOutlined />}
+                  onClick={onFilterSearch}
+                  type="primary"
+                >
+                  Find
+                </Button>
+              </Col>
+              <Col span={3}>
+                <Button icon={<RollbackOutlined />} onClick={onFilterReset}>
+                  Reset
+                </Button>
+              </Col>
+            </Row>
+          </div>
         );
       case "messages":
         return (
-          <Row gutter={8} style={{ marginBottom: 16 }}>
-            <Col span={6}>
-              <Input
-                placeholder="Filter by File ID"
-                value={filters.fileId}
-                onChange={(e) =>
-                  setFilters({ ...filters, fileId: e.target.value })
-                }
-                prefix={<FilterOutlined />}
-              />
-            </Col>
-            <Col span={3}>
-              <Button icon={<ReloadOutlined />} onClick={onRefresh}>
-                Refresh
-              </Button>
-            </Col>
-          </Row>
+          <div>
+            <Row gutter={8} style={{ marginBottom: 8 }}>
+              <Col span={4}>
+                <Input
+                  placeholder="Filter by File ID"
+                  value={filters.fileId}
+                  onChange={(e) => {
+                    setFilters({ ...filters, fileId: e.target.value });
+                    // Immediate effect for critical fields like fileId
+                    if (
+                      e.target.value &&
+                      context?.selectedUser &&
+                      context?.viewMode === "profile"
+                    ) {
+                      setTimeout(() => onFilterSearch(), 800); // Longer delay for typing
+                    }
+                  }}
+                  prefix={<FileOutlined />}
+                />
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="Page"
+                  value={filters.page}
+                  onChange={(e) =>
+                    setFilters({ ...filters, page: e.target.value })
+                  }
+                  type="number"
+                />
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="Limit"
+                  value={filters.limit}
+                  onChange={(e) =>
+                    setFilters({ ...filters, limit: e.target.value })
+                  }
+                  type="number"
+                />
+              </Col>
+              <Col span={3}>
+                <Button
+                  icon={<SearchOutlined />}
+                  onClick={onFilterSearch}
+                  type="primary"
+                >
+                  Find
+                </Button>
+              </Col>
+              <Col span={3}>
+                <Button icon={<RollbackOutlined />} onClick={onFilterReset}>
+                  Reset
+                </Button>
+              </Col>
+            </Row>
+          </div>
+        );
+      case "messages-global":
+        return (
+          <div>
+            <Row gutter={8} style={{ marginBottom: 8 }}>
+              <Col span={3}>
+                <Input
+                  placeholder="Page"
+                  value={filters.page}
+                  onChange={(e) =>
+                    setFilters({ ...filters, page: e.target.value })
+                  }
+                  type="number"
+                />
+              </Col>
+              <Col span={3}>
+                <Input
+                  placeholder="Limit"
+                  value={filters.limit}
+                  onChange={(e) =>
+                    setFilters({ ...filters, limit: e.target.value })
+                  }
+                  type="number"
+                />
+              </Col>
+              <Col span={3}>
+                <Button
+                  icon={<SearchOutlined />}
+                  onClick={onFilterSearch}
+                  type="primary"
+                >
+                  Find
+                </Button>
+              </Col>
+              <Col span={3}>
+                <Button icon={<RollbackOutlined />} onClick={onFilterReset}>
+                  Reset
+                </Button>
+              </Col>
+            </Row>
+          </div>
         );
       default:
         return null;
@@ -274,7 +1115,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [userDetailsVisible, setUserDetailsVisible] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "profile">("list");
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
   const [userDetails, setUserDetails] = useState<any>(null);
   const [userData, setUserData] = useState<UserData>({
@@ -294,97 +1135,496 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     total: 0,
   });
 
-  // Filter states for each data type
-  const [filesFilter, setFilesFilter] = useState({
-    keyword: "",
-    fieldQuery: "",
+  // Filter state variables (needed for backward compatibility)
+  const [filesFilter, setFilesFilter] = useState<FilesFilterForm>({
+    page: "1",
+    limit: "10",
+    folderId: "",
     fieldSort: "",
     sort: "",
-  });
-  const [foldersFilter, setFoldersFilter] = useState({
     keyword: "",
     fieldQuery: "",
+    id: "",
+    include: "",
+  });
+  const [foldersFilter, setFoldersFilter] = useState<FoldersFilterForm>({
+    page: "1",
+    limit: "10",
     fieldSort: "",
     sort: "",
+    keyword: "",
+    fieldQuery: "",
+    id: "",
   });
-  const [transcriptsFilter, setTranscriptsFilter] = useState({
-    isHighlighted: "",
-  });
-  const [messagesFilter, setMessagesFilter] = useState({
+  const [transcriptsFilter, setTranscriptsFilter] =
+    useState<TranscriptsFilterForm>({
+      fileId: "",
+      isHighlighted: "",
+      cursor: "",
+      limit: "10",
+    });
+  const [messagesFilter, setMessagesFilter] = useState<MessagesFilterForm>({
     fileId: "",
+    page: "1",
+    limit: "10",
   });
+  const [messagesGlobalFilter, setMessagesGlobalFilter] =
+    useState<MessagesGlobalFilterForm>({
+      page: "1",
+      limit: "10",
+    });
+
+  // React Hook Form instances for each filter type
+  const filesForm = useForm<FilesFilterForm>({
+    defaultValues: {
+      page: "1",
+      limit: "10",
+      folderId: "",
+      fieldSort: "",
+      sort: "",
+      keyword: "",
+      fieldQuery: "",
+      id: "",
+      include: "",
+    },
+    mode: "onChange",
+  });
+
+  const foldersForm = useForm<FoldersFilterForm>({
+    defaultValues: {
+      page: "1",
+      limit: "10",
+      fieldSort: "",
+      sort: "",
+      keyword: "",
+      fieldQuery: "",
+      id: "",
+    },
+    mode: "onChange",
+  });
+
+  const transcriptsForm = useForm<TranscriptsFilterForm>({
+    defaultValues: {
+      fileId: "",
+      isHighlighted: "",
+      cursor: "",
+      limit: "10",
+    },
+    mode: "onChange",
+  });
+
+  const messagesForm = useForm<MessagesFilterForm>({
+    defaultValues: {
+      page: "1",
+      limit: "10",
+      fileId: "",
+    },
+    mode: "onChange",
+  });
+
+  const messagesGlobalForm = useForm<MessagesGlobalFilterForm>({
+    defaultValues: {
+      page: "1",
+      limit: "10",
+    },
+    mode: "onChange",
+  });
+
+  // Enhanced filter action functions with React Hook Form
+  const handleFilterSearch = useCallback(
+    async (
+      filterType:
+        | "files"
+        | "folders"
+        | "transcripts"
+        | "messages"
+        | "messages-global",
+      data?: any
+    ) => {
+      if (!selectedUser) return;
+
+      try {
+        setUserDetailsLoading(true);
+
+        // Load only the specific data type instead of all data
+        switch (filterType) {
+          case "files":
+            await loadFilesData(selectedUser.deviceId);
+            break;
+          case "folders":
+            await loadFoldersData(selectedUser.deviceId);
+            break;
+          case "transcripts":
+            await loadTranscriptsData(selectedUser.deviceId);
+            break;
+          case "messages":
+            await loadMessagesData(selectedUser.deviceId);
+            break;
+          case "messages-global":
+            await loadMessagesGlobalData(selectedUser.deviceId);
+            break;
+          default:
+            // Fallback to loading all data
+            const userData = await loadUserData(selectedUser.deviceId);
+            setUserData(userData);
+        }
+
+        message.success(`${filterType} data refreshed with filters`);
+      } catch (error) {
+        console.error(`Error refreshing ${filterType} data:`, error);
+        message.error(`Failed to refresh ${filterType} data`);
+      } finally {
+        setUserDetailsLoading(false);
+      }
+    },
+    [selectedUser, setUserDetailsLoading, setUserData]
+  );
+
+  const handleFilterReset = useCallback(
+    (
+      filterType:
+        | "files"
+        | "folders"
+        | "transcripts"
+        | "messages"
+        | "messages-global"
+    ) => {
+      switch (filterType) {
+        case "files":
+          filesForm.reset();
+          break;
+        case "folders":
+          foldersForm.reset();
+          break;
+        case "transcripts":
+          transcriptsForm.reset();
+          break;
+        case "messages":
+          messagesForm.reset();
+          break;
+        case "messages-global":
+          messagesGlobalForm.reset();
+          break;
+      }
+      message.success(`${filterType} filters reset to default`);
+    },
+    [filesForm, foldersForm, transcriptsForm, messagesForm, messagesGlobalForm]
+  );
 
   // Load users when component mounts or environment changes
   useEffect(() => {
-    loadUsers();
-  }, [environment, pagination.current, searchTerm]);
+    const loadUsersWrapper = async () => {
+      if (!environment) return;
 
-  // Refresh user data when filters change
+      setLoading(true);
+      try {
+        const baseUrl =
+          environment === "production"
+            ? process.env.NEXT_PUBLIC_PROD_API_URL
+            : process.env.NEXT_PUBLIC_DEV_API_URL;
+
+        console.log("Loading users with:", { environment, baseUrl });
+
+        const params = new URLSearchParams({
+          page: pagination.current.toString(),
+          limit: pagination.pageSize.toString(),
+        });
+
+        if (searchTerm) {
+          params.append("deviceId", searchTerm);
+        }
+
+        const url = `${baseUrl}/api/v1/admin/users/device-ids?${params}`;
+        console.log("API URL:", url);
+
+        const response = await fetch(url, {
+          headers: {
+            "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+            "Content-Type": "application/json",
+          },
+        });
+
+        console.log("Response status:", response.status);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log("API Response:", result);
+
+        // Handle the actual API response structure
+        const userData = result.data || {};
+        const users = userData.items || [];
+        const total = userData.totalItems || 0;
+
+        console.log("Parsed users:", { users: users.length, total });
+
+        setUsers(users);
+        setPagination((prev) => ({
+          ...prev,
+          total: total,
+        }));
+
+        message.success(`Loaded ${users.length} users (${total} total)`);
+      } catch (error) {
+        console.error("Error loading users:", error);
+        message.error("Failed to load users. Please check your configuration.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsersWrapper();
+  }, [environment, pagination.current, pagination.pageSize, searchTerm]);
+
+  // Auto-refresh when filter changes for immediate effect (separated for independent operation)
   useEffect(() => {
-    if (selectedUser && userDetailsVisible) {
-      refreshUserData();
+    if (selectedUser && viewMode === "profile") {
+      const timer = setTimeout(() => {
+        handleFilterSearch("files");
+      }, 500); // Debounce to avoid too many API calls
+      return () => clearTimeout(timer);
     }
-  }, [filesFilter, foldersFilter, transcriptsFilter, messagesFilter]);
+  }, [filesFilter]); // Removed selectedUser to prevent cross-contamination
+
+  useEffect(() => {
+    if (selectedUser && viewMode === "profile") {
+      const timer = setTimeout(() => {
+        handleFilterSearch("folders");
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [foldersFilter]); // Removed selectedUser to prevent cross-contamination
+
+  useEffect(() => {
+    if (selectedUser && viewMode === "profile") {
+      const timer = setTimeout(() => {
+        handleFilterSearch("transcripts");
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [transcriptsFilter]); // Removed selectedUser to prevent cross-contamination
+
+  useEffect(() => {
+    if (selectedUser && viewMode === "profile") {
+      const timer = setTimeout(() => {
+        handleFilterSearch("messages");
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [messagesFilter]); // Removed selectedUser to prevent cross-contamination
+
+  useEffect(() => {
+    if (selectedUser && viewMode === "profile") {
+      const timer = setTimeout(() => {
+        handleFilterSearch("messages-global");
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [messagesGlobalFilter]); // Removed selectedUser to prevent cross-contamination
 
   const loadUsers = async () => {
-    if (!environment) return;
+    // This function is now handled inline in the useEffect to avoid dependency warnings
+    // The logic has been moved to useEffect to ensure proper dependency management
+  };
 
-    setLoading(true);
-    try {
-      const baseUrl =
-        environment === "production"
-          ? process.env.NEXT_PUBLIC_PROD_API_URL
-          : process.env.NEXT_PUBLIC_DEV_API_URL;
+  const handleRefreshUsers = () => {
+    // Force a refresh by updating the pagination state which triggers the useEffect
+    setPagination((prev) => ({ ...prev, current: prev.current }));
+  };
 
-      console.log("Loading users with:", { environment, baseUrl });
+  // Individual data loading functions for independent filter operation
+  const loadFilesData = async (deviceId: string) => {
+    const baseUrl =
+      environment === "production"
+        ? process.env.NEXT_PUBLIC_PROD_API_URL
+        : process.env.NEXT_PUBLIC_DEV_API_URL;
 
-      const params = new URLSearchParams({
-        page: pagination.current.toString(),
-        limit: pagination.pageSize.toString(),
-      });
+    const headers = {
+      "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+      "x-device-id": deviceId,
+      "Content-Type": "application/json",
+    };
 
-      if (searchTerm) {
-        params.append("deviceId", searchTerm);
+    const filesParams = new URLSearchParams();
+    if (filesFilter.keyword) filesParams.append("keyword", filesFilter.keyword);
+    if (filesFilter.fieldQuery)
+      filesParams.append("fieldQuery", filesFilter.fieldQuery);
+    if (filesFilter.folderId)
+      filesParams.append("folderId", filesFilter.folderId);
+    if (filesFilter.id) filesParams.append("id", filesFilter.id);
+    if (filesFilter.fieldSort)
+      filesParams.append("fieldSort", filesFilter.fieldSort);
+    if (filesFilter.sort) filesParams.append("sort", filesFilter.sort);
+    if (filesFilter.include) filesParams.append("include", filesFilter.include);
+    if (filesFilter.page) filesParams.append("page", filesFilter.page);
+    if (filesFilter.limit) filesParams.append("limit", filesFilter.limit);
+
+    const response = await fetch(
+      `${baseUrl}/api/v1/admin/files?${filesParams}`,
+      { headers }
+    );
+    if (response.ok) {
+      const filesData = await response.json();
+      const files = filesData.data?.items || filesData.data || [];
+      setUserData((prev) => ({ ...prev, files }));
+    }
+  };
+
+  const loadFoldersData = async (deviceId: string) => {
+    const baseUrl =
+      environment === "production"
+        ? process.env.NEXT_PUBLIC_PROD_API_URL
+        : process.env.NEXT_PUBLIC_DEV_API_URL;
+
+    const headers = {
+      "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+      "x-device-id": deviceId,
+      "Content-Type": "application/json",
+    };
+
+    const foldersParams = new URLSearchParams();
+    if (foldersFilter.keyword)
+      foldersParams.append("keyword", foldersFilter.keyword);
+    if (foldersFilter.fieldQuery)
+      foldersParams.append("fieldQuery", foldersFilter.fieldQuery);
+    if (foldersFilter.id) foldersParams.append("id", foldersFilter.id);
+    if (foldersFilter.fieldSort)
+      foldersParams.append("fieldSort", foldersFilter.fieldSort);
+    if (foldersFilter.sort) foldersParams.append("sort", foldersFilter.sort);
+    if (foldersFilter.page) foldersParams.append("page", foldersFilter.page);
+    if (foldersFilter.limit) foldersParams.append("limit", foldersFilter.limit);
+
+    const response = await fetch(
+      `${baseUrl}/api/v1/admin/folders?${foldersParams}`,
+      { headers }
+    );
+    if (response.ok) {
+      const foldersData = await response.json();
+      const folders = foldersData.data?.items || foldersData.data || [];
+      setUserData((prev) => ({ ...prev, folders }));
+    }
+  };
+
+  const loadTranscriptsData = async (deviceId: string) => {
+    const baseUrl =
+      environment === "production"
+        ? process.env.NEXT_PUBLIC_PROD_API_URL
+        : process.env.NEXT_PUBLIC_DEV_API_URL;
+
+    const headers = {
+      "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+      "x-device-id": deviceId,
+      "Content-Type": "application/json",
+    };
+
+    const transcriptsParams = new URLSearchParams();
+    if (transcriptsFilter.fileId)
+      transcriptsParams.append("fileId", transcriptsFilter.fileId);
+    if (transcriptsFilter.isHighlighted)
+      transcriptsParams.append(
+        "isHighlighted",
+        transcriptsFilter.isHighlighted
+      );
+    if (transcriptsFilter.cursor)
+      transcriptsParams.append("cursor", transcriptsFilter.cursor);
+    if (transcriptsFilter.limit)
+      transcriptsParams.append("limit", transcriptsFilter.limit);
+
+    if (transcriptsFilter.fileId) {
+      // Load transcripts for specific file
+      const response = await fetch(
+        `${baseUrl}/api/v1/admin/transcripts?${transcriptsParams}`,
+        { headers }
+      );
+      if (response.ok) {
+        const transcriptData = await response.json();
+        const transcripts = transcriptData.data?.data || [];
+        setUserData((prev) => ({ ...prev, transcripts }));
       }
+    } else {
+      // If no specific fileId, load transcripts from current files in state
+      const currentFiles = userData.files.slice(0, 5); // Limit to first 5 files
+      if (currentFiles.length > 0) {
+        const transcriptPromises = currentFiles.map((file: any) =>
+          fetch(
+            `${baseUrl}/api/v1/admin/transcripts?fileId=${file.id}&${transcriptsParams}`,
+            { headers }
+          ).then((res) => (res.ok ? res.json() : null))
+        );
 
-      const url = `${baseUrl}/api/v1/admin/users/device-ids?${params}`;
-      console.log("API URL:", url);
+        const transcriptResults = await Promise.allSettled(transcriptPromises);
+        const transcripts = transcriptResults
+          .filter(
+            (result): result is PromiseFulfilledResult<any> =>
+              result.status === "fulfilled" && result.value
+          )
+          .flatMap((result) => result.value.data?.data || []);
 
-      const response = await fetch(url, {
-        headers: {
-          "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
-          "Content-Type": "application/json",
-        },
-      });
-
-      console.log("Response status:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        setUserData((prev) => ({ ...prev, transcripts }));
       }
+    }
+  };
 
-      const result = await response.json();
-      console.log("API Response:", result);
+  const loadMessagesData = async (deviceId: string) => {
+    const baseUrl =
+      environment === "production"
+        ? process.env.NEXT_PUBLIC_PROD_API_URL
+        : process.env.NEXT_PUBLIC_DEV_API_URL;
 
-      // Handle the actual API response structure
-      const userData = result.data || {};
-      const users = userData.items || [];
-      const total = userData.totalItems || 0;
+    const headers = {
+      "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+      "x-device-id": deviceId,
+      "Content-Type": "application/json",
+    };
 
-      console.log("Parsed users:", { users: users.length, total });
+    const messagesParams = new URLSearchParams();
+    if (messagesFilter.fileId)
+      messagesParams.append("fileId", messagesFilter.fileId);
+    if (messagesFilter.page) messagesParams.append("page", messagesFilter.page);
+    if (messagesFilter.limit)
+      messagesParams.append("limit", messagesFilter.limit);
 
-      setUsers(users);
-      setPagination((prev) => ({
-        ...prev,
-        total: total,
-      }));
+    const response = await fetch(
+      `${baseUrl}/api/v1/admin/messages/chat-with-note?${messagesParams}`,
+      { headers }
+    );
+    if (response.ok) {
+      const messagesData = await response.json();
+      const messagesWithNote =
+        messagesData.data?.items || messagesData.data || [];
+      setUserData((prev) => ({ ...prev, messagesWithNote }));
+    }
+  };
 
-      message.success(`Loaded ${users.length} users (${total} total)`);
-    } catch (error) {
-      console.error("Error loading users:", error);
-      message.error("Failed to load users. Please check your configuration.");
-    } finally {
-      setLoading(false);
+  const loadMessagesGlobalData = async (deviceId: string) => {
+    const baseUrl =
+      environment === "production"
+        ? process.env.NEXT_PUBLIC_PROD_API_URL
+        : process.env.NEXT_PUBLIC_DEV_API_URL;
+
+    const headers = {
+      "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+      "x-device-id": deviceId,
+      "Content-Type": "application/json",
+    };
+
+    const messagesGlobalParams = new URLSearchParams();
+    if (messagesGlobalFilter.page)
+      messagesGlobalParams.append("page", messagesGlobalFilter.page);
+    if (messagesGlobalFilter.limit)
+      messagesGlobalParams.append("limit", messagesGlobalFilter.limit);
+
+    const response = await fetch(
+      `${baseUrl}/api/v1/admin/messages/chat-global?${messagesGlobalParams}`,
+      { headers }
+    );
+    if (response.ok) {
+      const messagesData = await response.json();
+      const messagesGlobal =
+        messagesData.data?.items || messagesData.data || [];
+      setUserData((prev) => ({ ...prev, messagesGlobal }));
     }
   };
 
@@ -396,7 +1636,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
     const headers = {
       "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
-      "x-device-id": deviceId,
+      "x-device-id": selectedUser?.deviceId || deviceId,
       "Content-Type": "application/json",
     };
 
@@ -409,31 +1649,56 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         filesParams.append("keyword", filesFilter.keyword);
       if (filesFilter.fieldQuery)
         filesParams.append("fieldQuery", filesFilter.fieldQuery);
+      if (filesFilter.folderId)
+        filesParams.append("folderId", filesFilter.folderId);
+      if (filesFilter.id) filesParams.append("id", filesFilter.id);
       if (filesFilter.fieldSort)
         filesParams.append("fieldSort", filesFilter.fieldSort);
       if (filesFilter.sort) filesParams.append("sort", filesFilter.sort);
+      if (filesFilter.include)
+        filesParams.append("include", filesFilter.include);
+      if (filesFilter.page) filesParams.append("page", filesFilter.page);
+      if (filesFilter.limit) filesParams.append("limit", filesFilter.limit);
 
       const foldersParams = new URLSearchParams();
       if (foldersFilter.keyword)
         foldersParams.append("keyword", foldersFilter.keyword);
       if (foldersFilter.fieldQuery)
         foldersParams.append("fieldQuery", foldersFilter.fieldQuery);
+      if (foldersFilter.id) foldersParams.append("id", foldersFilter.id);
       if (foldersFilter.fieldSort)
         foldersParams.append("fieldSort", foldersFilter.fieldSort);
       if (foldersFilter.sort) foldersParams.append("sort", foldersFilter.sort);
+      if (foldersFilter.page) foldersParams.append("page", foldersFilter.page);
+      if (foldersFilter.limit)
+        foldersParams.append("limit", foldersFilter.limit);
 
       const transcriptsParams = new URLSearchParams();
+      if (transcriptsFilter.fileId)
+        transcriptsParams.append("fileId", transcriptsFilter.fileId);
       if (transcriptsFilter.isHighlighted)
         transcriptsParams.append(
           "isHighlighted",
           transcriptsFilter.isHighlighted
         );
+      if (transcriptsFilter.cursor)
+        transcriptsParams.append("cursor", transcriptsFilter.cursor);
+      if (transcriptsFilter.limit)
+        transcriptsParams.append("limit", transcriptsFilter.limit);
 
       const messagesNoteParams = new URLSearchParams();
       if (messagesFilter.fileId)
         messagesNoteParams.append("fileId", messagesFilter.fileId);
+      if (messagesFilter.page)
+        messagesNoteParams.append("page", messagesFilter.page);
+      if (messagesFilter.limit)
+        messagesNoteParams.append("limit", messagesFilter.limit);
 
       const messagesGlobalParams = new URLSearchParams();
+      if (messagesGlobalFilter.page)
+        messagesGlobalParams.append("page", messagesGlobalFilter.page);
+      if (messagesGlobalFilter.limit)
+        messagesGlobalParams.append("limit", messagesGlobalFilter.limit);
 
       // Load files, folders, and messages first
       const [filesRes, foldersRes, messagesNoteRes, messagesGlobalRes] =
@@ -470,20 +1735,38 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         userData.files = filesData.data?.items || filesData.data || [];
         console.log("Files loaded:", userData.files.length);
 
-        // Load transcripts for each file
-        if (userData.files.length > 0) {
+        // Load transcripts
+        if (transcriptsFilter.fileId) {
+          // If specific fileId is provided in filter, load transcripts for that file only
           try {
-            const transcriptPromises = userData.files.slice(0, 5).map(
-              (
-                file: any // Limit to first 5 files to avoid too many requests
-              ) =>
+            const transcriptRes = await fetch(
+              `${baseUrl}/api/v1/admin/transcripts?${transcriptsParams}`,
+              { headers }
+            );
+            if (transcriptRes.ok) {
+              const transcriptData = await transcriptRes.json();
+              userData.transcripts = transcriptData.data?.data || [];
+              console.log(
+                "Transcripts loaded for specific file:",
+                userData.transcripts.length
+              );
+            }
+          } catch (error) {
+            console.log("Error loading transcripts for specific file:", error);
+          }
+        } else if (userData.files.length > 0) {
+          // Load transcripts for multiple files (limit to first 5 to avoid too many requests)
+          try {
+            const transcriptPromises = userData.files
+              .slice(0, 5)
+              .map((file: any) =>
                 fetch(
                   `${baseUrl}/api/v1/admin/transcripts?fileId=${file.id}&${transcriptsParams}`,
                   {
                     headers,
                   }
                 ).then((res) => (res.ok ? res.json() : null))
-            );
+              );
 
             const transcriptResults = await Promise.allSettled(
               transcriptPromises
@@ -495,7 +1778,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               )
               .flatMap((result) => result.value.data?.data || []);
 
-            console.log("Transcripts loaded:", userData.transcripts.length);
+            console.log(
+              "Transcripts loaded for multiple files:",
+              userData.transcripts.length
+            );
           } catch (error) {
             console.log("Error loading transcripts:", error);
           }
@@ -586,7 +1872,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const loadUserDetails = async (user: User) => {
     console.log("Loading user details for:", user);
     setSelectedUser(user);
-    setUserDetailsVisible(true);
+    setViewMode("profile");
     setUserDetailsLoading(true);
 
     try {
@@ -655,6 +1941,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           method: "PATCH",
           headers: {
             "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+            "x-device-id": selectedUser.deviceId, // Add current device ID to header
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -695,36 +1982,81 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const columns = [
     {
       title: "User ID",
-      dataIndex: "id",
+      dataIndex: "userid",
       key: "userId",
-      render: (id: string) => (
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <Avatar
-            size="small"
-            icon={<UserOutlined />}
-            style={{ marginRight: 8, backgroundColor: "#1890ff" }}
-          />
-          <Text code style={{ fontSize: "11px", fontFamily: "monospace" }}>
-            {id}
-          </Text>
-        </div>
-      ),
-      width: 300,
+      render: (userid: string, record: User) => {
+        // Handle multiple possible field names for user ID
+        const userIdValue = userid || record.id || record.userId || "Not Set";
+
+        const handleCopy = () => {
+          if (userIdValue && userIdValue !== "Not Set") {
+            navigator.clipboard.writeText(userIdValue);
+            message.success("User ID copied to clipboard");
+          }
+        };
+
+        return (
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Avatar
+              size="small"
+              icon={<UserOutlined />}
+              style={{ marginRight: 8, backgroundColor: "#1890ff" }}
+            />
+            <Tooltip title={`Click to copy: ${userIdValue}`}>
+              <Text
+                code
+                style={{
+                  fontSize: "11px",
+                  fontFamily: "monospace",
+                  cursor: userIdValue !== "Not Set" ? "pointer" : "default",
+                  color: userIdValue !== "Not Set" ? "#1890ff" : "#999",
+                }}
+                onClick={handleCopy}
+              >
+                {userIdValue !== "Not Set" && userIdValue.length > 12
+                  ? `${userIdValue.substring(0, 12)}...`
+                  : userIdValue}
+              </Text>
+            </Tooltip>
+          </div>
+        );
+      },
+      width: 200,
       ellipsis: true,
     },
     {
       title: "Device ID",
       dataIndex: "deviceId",
       key: "deviceId",
-      render: (deviceId: string) => (
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <MobileOutlined style={{ color: "#52c41a", marginRight: 8 }} />
-          <Text code style={{ fontSize: "11px", fontFamily: "monospace" }}>
-            {deviceId || "Not Set"}
-          </Text>
-        </div>
-      ),
-      width: 300,
+      render: (deviceId: string) => {
+        const handleCopy = () => {
+          if (deviceId) {
+            navigator.clipboard.writeText(deviceId);
+            message.success("Device ID copied to clipboard");
+          }
+        };
+
+        return (
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <MobileOutlined style={{ color: "#52c41a", marginRight: 8 }} />
+            <Tooltip title={`Click to copy: ${deviceId}`}>
+              <Text
+                code
+                style={{
+                  fontSize: "11px",
+                  fontFamily: "monospace",
+                  cursor: deviceId ? "pointer" : "default",
+                  color: deviceId ? "#1890ff" : "#999",
+                }}
+                onClick={handleCopy}
+              >
+                {deviceId ? `${deviceId.substring(0, 12)}...` : "Not Set"}
+              </Text>
+            </Tooltip>
+          </div>
+        );
+      },
+      width: 200,
       ellipsis: true,
     },
     {
@@ -827,12 +2159,192 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     },
   ];
 
+  // Helper function to dynamically generate columns from data
+  const generateDynamicColumns = (data: any[]) => {
+    if (!data || data.length === 0) return [];
+
+    // Get all unique keys from all objects in the array
+    const allKeys = new Set<string>();
+    data.forEach((item) => {
+      Object.keys(item || {}).forEach((key) => allKeys.add(key));
+    });
+
+    return Array.from(allKeys).map((key) => {
+      // Determine column width based on content type and key name
+      let width = 150;
+      if (key.toLowerCase().includes("id")) width = 200;
+      if (key.toLowerCase().includes("name")) width = 250;
+      if (
+        key.toLowerCase().includes("date") ||
+        key.toLowerCase().includes("time")
+      )
+        width = 180;
+      if (key.toLowerCase().includes("status")) width = 120;
+
+      return {
+        title:
+          key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
+        dataIndex: key,
+        key: key,
+        ellipsis: true,
+        width: width,
+        render: (value: any, record: any) => {
+          if (value === null || value === undefined) {
+            return <Text type="secondary">NULL</Text>;
+          }
+          if (typeof value === "boolean") {
+            return (
+              <Tag color={value ? "green" : "red"}>{value.toString()}</Tag>
+            );
+          }
+          if (typeof value === "object") {
+            const jsonString = JSON.stringify(value, null, 2);
+            const displayString = JSON.stringify(value).substring(0, 30);
+
+            const handleCopy = () => {
+              navigator.clipboard.writeText(jsonString);
+              message.success("Object data copied to clipboard");
+            };
+
+            return (
+              <Tooltip title={<pre>{jsonString}</pre>}>
+                <Text
+                  code
+                  style={{
+                    fontSize: "10px",
+                    cursor: "pointer",
+                    color: "#1890ff",
+                  }}
+                  onClick={handleCopy}
+                >
+                  {displayString}...
+                </Text>
+              </Tooltip>
+            );
+          }
+          if (typeof value === "string") {
+            // Handle different string types
+            if (value.length > 50) {
+              const handleCopy = () => {
+                navigator.clipboard.writeText(value);
+                message.success("Text copied to clipboard");
+              };
+
+              return (
+                <Tooltip title={`Click to copy: ${value}`}>
+                  <Text
+                    style={{
+                      cursor: "pointer",
+                      color: "#1890ff",
+                    }}
+                    onClick={handleCopy}
+                  >
+                    {value.substring(0, 50)}...
+                  </Text>
+                </Tooltip>
+              );
+            }
+            // Check if it's a date string
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+              const handleCopy = () => {
+                navigator.clipboard.writeText(value);
+                message.success("Date copied to clipboard");
+              };
+
+              return (
+                <Tooltip title={`Click to copy: ${value}`}>
+                  <Text
+                    style={{
+                      fontSize: "11px",
+                      cursor: "pointer",
+                      color: "#1890ff",
+                    }}
+                    onClick={handleCopy}
+                  >
+                    {new Date(value).toLocaleDateString()}{" "}
+                    {new Date(value).toLocaleTimeString()}
+                  </Text>
+                </Tooltip>
+              );
+            }
+            // Check if it's an ID (typically long hex strings)
+            if (value.length > 20 && /^[a-f0-9-]+$/i.test(value)) {
+              const handleCopy = () => {
+                navigator.clipboard.writeText(value);
+                message.success("ID copied to clipboard");
+              };
+
+              return (
+                <Tooltip title={`Click to copy: ${value}`}>
+                  <Text
+                    code
+                    style={{
+                      fontSize: "10px",
+                      cursor: "pointer",
+                      color: "#1890ff",
+                    }}
+                    onClick={handleCopy}
+                  >
+                    {value.substring(0, 12)}...
+                  </Text>
+                </Tooltip>
+              );
+            }
+            // For regular strings longer than 30 characters, also add copy functionality
+            if (value.length > 30) {
+              const handleCopy = () => {
+                navigator.clipboard.writeText(value);
+                message.success("Text copied to clipboard");
+              };
+
+              return (
+                <Tooltip title={`Click to copy: ${value}`}>
+                  <Text
+                    style={{
+                      cursor: "pointer",
+                      color: "#1890ff",
+                    }}
+                    onClick={handleCopy}
+                  >
+                    {value.substring(0, 30)}...
+                  </Text>
+                </Tooltip>
+              );
+            }
+          }
+          // For numbers and short strings, add copy on click as well
+          const handleCopy = () => {
+            navigator.clipboard.writeText(String(value));
+            message.success("Value copied to clipboard");
+          };
+
+          return (
+            <Text
+              style={{
+                cursor: "pointer",
+                color: "#1890ff",
+              }}
+              onClick={handleCopy}
+              title="Click to copy"
+            >
+              {value}
+            </Text>
+          );
+        },
+      };
+    });
+  };
+
   const renderDataTable = (
     data: any[],
-    columns: any[],
     title: string,
     icon: React.ReactNode,
-    filterType?: "files" | "folders" | "transcripts" | "messages"
+    filterType?:
+      | "files"
+      | "folders"
+      | "transcripts"
+      | "messages"
+      | "messages-global"
   ) => {
     const getFilters = () => {
       switch (filterType) {
@@ -847,12 +2359,18 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           };
         case "messages":
           return { filters: messagesFilter, setFilters: setMessagesFilter };
+        case "messages-global":
+          return {
+            filters: messagesGlobalFilter,
+            setFilters: setMessagesGlobalFilter,
+          };
         default:
           return null;
       }
     };
 
     const filterConfig = getFilters();
+    const dynamicColumns = generateDynamicColumns(data);
 
     return (
       <div>
@@ -861,187 +2379,212 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             filterType!,
             filterConfig.filters,
             filterConfig.setFilters,
-            refreshUserData
+            () => handleFilterSearch(filterType!),
+            () => handleFilterReset(filterType!),
+            { selectedUser, viewMode }
           )}
-        {!data || data.length === 0 ? (
-          <Empty
-            description={`No ${title.toLowerCase()} found for this user`}
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
-        ) : (
-          <Table
-            dataSource={data}
-            columns={columns}
-            pagination={{ pageSize: 5 }}
-            size="small"
-            scroll={{ x: true }}
-          />
-        )}
+
+        {/* Enhanced Data Display */}
+        <Card
+          size="small"
+          style={{ marginBottom: 16 }}
+          title={
+            <Space>
+              {icon}
+              <Text strong>
+                {title.charAt(0).toUpperCase() + title.slice(1)}
+              </Text>
+              <Tag color="blue">{data?.length || 0} items</Tag>
+            </Space>
+          }
+          extra={
+            <Button
+              icon={<ReloadOutlined />}
+              size="small"
+              onClick={() => handleFilterSearch(filterType!)}
+              type="link"
+            >
+              Refresh
+            </Button>
+          }
+        >
+          {!data || data.length === 0 ? (
+            <Empty
+              description={`No ${title.toLowerCase()} found for this user`}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          ) : (
+            <Table
+              dataSource={data}
+              columns={dynamicColumns}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) =>
+                  `${range[0]}-${range[1]} of ${total} items`,
+              }}
+              size="small"
+              scroll={{
+                x: "max-content", // Allow horizontal scroll for very wide content
+                y: 400,
+              }}
+              rowKey={(record, index) => record.id || record.userid || index}
+              bordered
+              className="enhanced-data-table"
+              style={{
+                overflowX: "auto", // Ensure horizontal scrolling
+                minWidth: "100%",
+              }}
+            />
+          )}
+        </Card>
       </div>
     );
   };
 
-  return (
-    <div style={{ marginTop: "24px" }}>
-      <style jsx>{`
-        .enhanced-user-table .ant-table-thead > tr > th {
-          background: linear-gradient(90deg, #f0f2f5 0%, #fafafa 100%);
-          font-weight: 600;
-          border-bottom: 2px solid #d9d9d9;
-        }
-        .enhanced-user-table .ant-table-tbody > tr:hover > td {
-          background-color: #e6f7ff !important;
-        }
-        .enhanced-user-table .ant-table-tbody > tr:nth-child(even) {
-          background-color: #fafafa;
-        }
-      `}</style>
+  // Function to render user profile view
+  const renderUserProfile = () => {
+    if (!userDetails) return null;
 
-      <Card
-        title={
-          <Space>
-            <UserOutlined style={{ fontSize: "20px", color: "#1890ff" }} />
-            <Title level={4} style={{ margin: 0 }}>
-              User Management
-            </Title>
-            <Tag color="blue">{environment}</Tag>
-            <Tag color="green">{users.length} users loaded</Tag>
-          </Space>
-        }
-        extra={
-          <Space>
-            <Search
-              placeholder="Search by Device ID"
-              allowClear
-              onSearch={handleSearch}
-              style={{ width: 250 }}
-              prefix={<SearchOutlined />}
-            />
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={loadUsers}
-              loading={loading}
-              type="primary"
-            >
-              Refresh
-            </Button>
-          </Space>
-        }
-      >
-        <Table
-          columns={columns}
-          dataSource={users}
-          loading={loading}
-          rowKey="id"
-          pagination={false}
-          size="middle"
-          scroll={{ x: 1400 }}
-          style={{ marginBottom: "16px" }}
-          className="enhanced-user-table"
-          bordered
-        />
+    return (
+      <div>
+        {/* Back Button */}
+        <Card style={{ marginBottom: 16 }}>
+          <Button
+            icon={<RollbackOutlined />}
+            onClick={() => setViewMode("list")}
+            type="primary"
+          >
+            Back to User List
+          </Button>
+        </Card>
 
-        <div style={{ textAlign: "right" }}>
-          <Pagination
-            current={pagination.current}
-            pageSize={pagination.pageSize}
-            total={pagination.total}
-            onChange={handlePaginationChange}
-            showSizeChanger
-            showQuickJumper
-            showTotal={(total, range) =>
-              `${range[0]}-${range[1]} of ${total} users`
-            }
-          />
-        </div>
-      </Card>
-
-      {/* Enhanced User Details Modal */}
-      <Modal
-        title={
-          <Space>
-            <UserOutlined />
-            <span>Complete User Profile</span>
-            {selectedUser && (
-              <Tag color="blue">{selectedUser.deviceId || "No Device ID"}</Tag>
-            )}
-          </Space>
-        }
-        open={userDetailsVisible}
-        onCancel={() => setUserDetailsVisible(false)}
-        footer={
-          <Space>
-            <Button
-              icon={<EditOutlined />}
-              onClick={() => setDeviceIdChangeVisible(true)}
-            >
-              Change Device ID
-            </Button>
-            <Button onClick={() => setUserDetailsVisible(false)}>Close</Button>
-          </Space>
-        }
-        width={1400}
-        style={{ top: 20 }}
-      >
         <Spin spinning={userDetailsLoading}>
-          {userDetails && (
-            <div>
-              {/* Basic Information */}
-              <Card
-                title="User Information"
-                size="small"
-                style={{ marginBottom: 16 }}
-              >
-                <Descriptions
-                  column={2}
-                  bordered
-                  size="middle"
-                  labelStyle={{
-                    fontWeight: "bold",
-                    backgroundColor: "#fafafa",
-                  }}
+          <div>
+            {/* Basic Information */}
+            <Card
+              title={
+                <Space>
+                  <Avatar
+                    icon={<UserOutlined />}
+                    style={{ backgroundColor: "#1890ff" }}
+                  />
+                  <span>User Profile Details</span>
+                  <Tag color="blue">
+                    {userDetails.deviceId || "No Device ID"}
+                  </Tag>
+                </Space>
+              }
+              size="small"
+              style={{ marginBottom: 16 }}
+              extra={
+                <Button
+                  icon={<EditOutlined />}
+                  onClick={() => setDeviceIdChangeVisible(true)}
                 >
-                  <Descriptions.Item label="User ID" span={2}>
-                    <Space>
-                      <UserOutlined style={{ color: "#1890ff" }} />
+                  Change Device ID
+                </Button>
+              }
+            >
+              <Descriptions
+                column={2}
+                bordered
+                size="middle"
+                labelStyle={{
+                  fontWeight: "bold",
+                  backgroundColor: "#fafafa",
+                }}
+              >
+                <Descriptions.Item label="User ID">
+                  {(() => {
+                    const userIdValue =
+                      userDetails.userid || userDetails.id || "Not Set";
+                    const handleCopy = () => {
+                      if (userIdValue && userIdValue !== "Not Set") {
+                        navigator.clipboard.writeText(userIdValue);
+                        message.success("User ID copied to clipboard");
+                      }
+                    };
+
+                    return (
                       <Text
                         code
-                        style={{ fontSize: 12, fontFamily: "monospace" }}
+                        style={{
+                          fontSize: 12,
+                          fontFamily: "monospace",
+                          cursor:
+                            userIdValue !== "Not Set" ? "pointer" : "default",
+                          color: userIdValue !== "Not Set" ? "#1890ff" : "#999",
+                        }}
+                        onClick={handleCopy}
+                        title={userIdValue !== "Not Set" ? "Click to copy" : ""}
                       >
-                        {userDetails.id}
+                        {userIdValue}
                       </Text>
-                    </Space>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Device ID" span={2}>
+                    );
+                  })()}
+                </Descriptions.Item>
+                <Descriptions.Item label="Device ID">
+                  <Space direction="vertical" size={2}>
                     <Space>
-                      <MobileOutlined style={{ color: "#52c41a" }} />
-                      <Text
-                        code
-                        style={{ fontSize: 12, fontFamily: "monospace" }}
-                      >
-                        {userDetails.deviceId || "Not Set"}
-                      </Text>
+                      <MobileOutlined style={{ color: "#1890ff" }} />
+                      {(() => {
+                        const deviceIdValue = userDetails.deviceId || "Not Set";
+                        const handleCopy = () => {
+                          if (deviceIdValue && deviceIdValue !== "Not Set") {
+                            navigator.clipboard.writeText(deviceIdValue);
+                            message.success("Device ID copied to clipboard");
+                          }
+                        };
+
+                        return (
+                          <Text
+                            code
+                            style={{
+                              fontSize: 12,
+                              fontFamily: "monospace",
+                              cursor:
+                                deviceIdValue !== "Not Set"
+                                  ? "pointer"
+                                  : "default",
+                              color:
+                                deviceIdValue !== "Not Set"
+                                  ? "#1890ff"
+                                  : "#999",
+                            }}
+                            onClick={handleCopy}
+                            title={
+                              deviceIdValue !== "Not Set" ? "Click to copy" : ""
+                            }
+                          >
+                            {deviceIdValue}
+                          </Text>
+                        );
+                      })()}
                     </Space>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Created At">
-                    <div>
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Created At">
+                  <div>
+                    <div style={{ fontWeight: 500 }}>
+                      {formatDate(userDetails.createdAt)}
+                    </div>
+                  </div>
+                </Descriptions.Item>
+                <Descriptions.Item label="Updated At">
+                  <div>
+                    {userDetails.updatedAt ? (
                       <div style={{ fontWeight: 500 }}>
-                        {formatDate(userDetails.createdAt)}
+                        {formatDate(userDetails.updatedAt)}
                       </div>
-                    </div>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Updated At">
-                    <div>
-                      {userDetails.updatedAt ? (
-                        <div style={{ fontWeight: 500 }}>
-                          {formatDate(userDetails.updatedAt)}
-                        </div>
-                      ) : (
-                        <Text type="secondary">Never updated</Text>
-                      )}
-                    </div>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Status" span={2}>
+                    ) : (
+                      <Text type="secondary">Never updated</Text>
+                    )}
+                  </div>
+                </Descriptions.Item>
+                <Descriptions.Item label="Status">
+                  <div>
                     {userDetails.deletedAt ? (
                       <div>
                         <Tag color="red" style={{ marginBottom: 4 }}>
@@ -1061,624 +2604,260 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                         Active User
                       </Tag>
                     )}
-                  </Descriptions.Item>
-                </Descriptions>
-              </Card>
+                  </div>
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
 
-              {/* Data Tabs */}
-              <Tabs defaultActiveKey="files">
-                <TabPane
-                  tab={
-                    <Badge count={userData.files.length}>
-                      <Space>
-                        <FileOutlined />
-                        Files
-                      </Space>
-                    </Badge>
-                  }
-                  key="files"
-                >
-                  {renderDataTable(
-                    userData.files,
-                    [
-                      {
-                        title: "ID",
-                        dataIndex: "id",
-                        key: "id",
-                        ellipsis: true,
-                        width: 120,
-                        render: (id: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {id?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Title",
-                        dataIndex: "title",
-                        key: "title",
-                        ellipsis: true,
-                        width: 200,
-                        render: (title: string) => (
-                          <Tooltip title={title}>
-                            <Text strong>{title}</Text>
-                          </Tooltip>
-                        ),
-                      },
-                      {
-                        title: "Status",
-                        dataIndex: "status",
-                        key: "status",
-                        render: (status: string) => (
-                          <Tag
-                            color={status === "PROCESSED" ? "green" : "orange"}
-                          >
-                            {status || "Unknown"}
-                          </Tag>
-                        ),
-                        width: 100,
-                      },
-                      {
-                        title: "Duration",
-                        dataIndex: "duration",
-                        key: "duration",
-                        render: (duration: number) =>
-                          duration
-                            ? `${Math.floor(duration / 60)}:${(duration % 60)
-                                .toString()
-                                .padStart(2, "0")}`
-                            : "N/A",
-                        width: 80,
-                      },
-                      {
-                        title: "Original Filename",
-                        dataIndex: "originalFilename",
-                        key: "originalFilename",
-                        ellipsis: true,
-                        width: 180,
-                        render: (filename: string) => (
-                          <Text code>{filename}</Text>
-                        ),
-                      },
-                      {
-                        title: "Summary",
-                        dataIndex: "summary",
-                        key: "summary",
-                        ellipsis: true,
-                        width: 250,
-                        render: (summary: string) => (
-                          <Tooltip title={summary}>
-                            <Text type="secondary" style={{ fontSize: "12px" }}>
-                              {summary?.substring(0, 80)}...
-                            </Text>
-                          </Tooltip>
-                        ),
-                      },
-                      {
-                        title: "User ID",
-                        dataIndex: "userId",
-                        key: "userId",
-                        width: 120,
-                        render: (userId: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {userId?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Folder ID",
-                        dataIndex: "folderId",
-                        key: "folderId",
-                        width: 120,
-                        render: (folderId: string) =>
-                          folderId ? (
-                            <Text code style={{ fontSize: "10px" }}>
-                              {folderId?.substring(0, 8)}...
-                            </Text>
-                          ) : (
-                            <Text type="secondary">No Folder</Text>
-                          ),
-                      },
-                      {
-                        title: "Created",
-                        dataIndex: "createdAt",
-                        key: "createdAt",
-                        render: (date: string) => (
-                          <div>
-                            <div style={{ fontSize: "12px" }}>
-                              {formatDate(date)}
-                            </div>
-                          </div>
-                        ),
-                        width: 180,
-                      },
-                      {
-                        title: "Updated",
-                        dataIndex: "updatedAt",
-                        key: "updatedAt",
-                        render: (date: string) => (
-                          <div>
-                            <div style={{ fontSize: "12px" }}>
-                              {formatDate(date)}
-                            </div>
-                          </div>
-                        ),
-                        width: 180,
-                      },
-                    ],
-                    "files",
-                    <FileOutlined />,
-                    "files"
-                  )}
-                </TabPane>
+            {/* Data Tabs */}
+            <Tabs defaultActiveKey="files">
+              <TabPane
+                tab={
+                  <Badge count={userData.files.length}>
+                    <Space>
+                      <FileOutlined />
+                      Files
+                    </Space>
+                  </Badge>
+                }
+                key="files"
+              >
+                {renderDataTable(
+                  userData.files,
+                  "files",
+                  <FileOutlined />,
+                  "files"
+                )}
+              </TabPane>
 
-                <TabPane
-                  tab={
-                    <Badge count={userData.folders.length}>
-                      <Space>
-                        <FolderOutlined />
-                        Folders
-                      </Space>
-                    </Badge>
-                  }
-                  key="folders"
-                >
-                  {renderDataTable(
-                    userData.folders,
-                    [
-                      {
-                        title: "ID",
-                        dataIndex: "id",
-                        key: "id",
-                        width: 120,
-                        render: (id: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {id?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Name",
-                        dataIndex: "name",
-                        key: "name",
-                        render: (name: string, record: any) => (
-                          <Space>
-                            <span style={{ fontSize: "16px" }}>
-                              {record.icon || "📁"}
-                            </span>
-                            <Text style={{ fontWeight: 500 }}>{name}</Text>
-                          </Space>
-                        ),
-                        width: 200,
-                      },
-                      {
-                        title: "Color",
-                        dataIndex: "color",
-                        key: "color",
-                        render: (color: string) => (
-                          <div
-                            style={{ display: "flex", alignItems: "center" }}
-                          >
-                            <div
-                              style={{
-                                width: 16,
-                                height: 16,
-                                backgroundColor: color || "#ccc",
-                                borderRadius: 4,
-                                marginRight: 8,
-                                border: "1px solid #d9d9d9",
-                              }}
-                            />
-                            <Text code style={{ fontSize: "11px" }}>
-                              {color || "N/A"}
-                            </Text>
-                          </div>
-                        ),
-                        width: 120,
-                      },
-                      {
-                        title: "Position",
-                        dataIndex: "position",
-                        key: "position",
-                        width: 80,
-                        render: (position: number) => (
-                          <Tag color="blue">{position}</Tag>
-                        ),
-                      },
-                      {
-                        title: "User ID",
-                        dataIndex: "userId",
-                        key: "userId",
-                        width: 120,
-                        render: (userId: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {userId?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Parent Folder",
-                        dataIndex: "parentFolderId",
-                        key: "parentFolderId",
-                        width: 120,
-                        render: (parentFolderId: string) =>
-                          parentFolderId ? (
-                            <Text code style={{ fontSize: "10px" }}>
-                              {parentFolderId?.substring(0, 8)}...
-                            </Text>
-                          ) : (
-                            <Text type="secondary">Root</Text>
-                          ),
-                      },
-                      {
-                        title: "Created",
-                        dataIndex: "createdAt",
-                        key: "createdAt",
-                        render: (date: string) => (
-                          <div>
-                            <div style={{ fontSize: "12px" }}>
-                              {formatDate(date)}
-                            </div>
-                          </div>
-                        ),
-                        width: 180,
-                      },
-                      {
-                        title: "Updated",
-                        dataIndex: "updatedAt",
-                        key: "updatedAt",
-                        render: (date: string) => (
-                          <div>
-                            <div style={{ fontSize: "12px" }}>
-                              {formatDate(date)}
-                            </div>
-                          </div>
-                        ),
-                        width: 180,
-                      },
-                    ],
-                    "folders",
-                    <FolderOutlined />,
-                    "folders"
-                  )}
-                </TabPane>
+              {/* Add other tabs similarly */}
+              <TabPane
+                tab={
+                  <Badge count={userData.folders.length}>
+                    <Space>
+                      <FolderOutlined />
+                      Folders
+                    </Space>
+                  </Badge>
+                }
+                key="folders"
+              >
+                {renderDataTable(
+                  userData.folders,
+                  "folders",
+                  <FolderOutlined />,
+                  "folders"
+                )}
+              </TabPane>
 
-                <TabPane
-                  tab={
-                    <Badge count={userData.transcripts.length}>
-                      <Space>
-                        <AudioOutlined />
-                        Transcripts
-                      </Space>
-                    </Badge>
-                  }
-                  key="transcripts"
-                >
-                  {renderDataTable(
-                    userData.transcripts,
-                    [
-                      {
-                        title: "ID",
-                        dataIndex: "id",
-                        key: "id",
-                        width: 120,
-                        render: (id: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {id?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "File ID",
-                        dataIndex: "fileId",
-                        key: "fileId",
-                        width: 120,
-                        render: (fileId: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {fileId?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Speaker",
-                        dataIndex: "speakerName",
-                        key: "speakerName",
-                        width: 100,
-                        render: (speakerName: string) => (
-                          <Tag color="blue">{speakerName || "Unknown"}</Tag>
-                        ),
-                      },
-                      {
-                        title: "Text",
-                        dataIndex: "text",
-                        key: "text",
-                        ellipsis: true,
-                        width: 300,
-                        render: (text: string) => (
-                          <Tooltip title={text}>
-                            <Text>{text?.substring(0, 100)}...</Text>
-                          </Tooltip>
-                        ),
-                      },
-                      {
-                        title: "Time Range",
-                        key: "timeRange",
-                        width: 120,
-                        render: (record: any) => (
-                          <Text code>
-                            {record.startTime}s - {record.endTime}s
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Highlighted",
-                        dataIndex: "isHighlighted",
-                        key: "isHighlighted",
-                        width: 100,
-                        render: (isHighlighted: boolean) => (
-                          <Tag color={isHighlighted ? "gold" : "default"}>
-                            {isHighlighted ? "Yes" : "No"}
-                          </Tag>
-                        ),
-                      },
-                      {
-                        title: "Order",
-                        dataIndex: "orderIndex",
-                        key: "orderIndex",
-                        width: 80,
-                        render: (orderIndex: number) => (
-                          <Tag color="purple">{orderIndex}</Tag>
-                        ),
-                      },
-                      {
-                        title: "Comments",
-                        dataIndex: "commentCount",
-                        key: "commentCount",
-                        width: 80,
-                        render: (commentCount: number) => (
-                          <Badge count={commentCount} />
-                        ),
-                      },
-                      {
-                        title: "Created",
-                        dataIndex: "createdAt",
-                        key: "createdAt",
-                        width: 180,
-                        render: (date: string) => formatDate(date),
-                      },
-                    ],
-                    "transcripts",
-                    <AudioOutlined />,
-                    "transcripts"
-                  )}
-                </TabPane>
+              <TabPane
+                tab={
+                  <Badge count={userData.transcripts.length}>
+                    <Space>
+                      <AudioOutlined />
+                      Transcripts
+                    </Space>
+                  </Badge>
+                }
+                key="transcripts"
+              >
+                {renderDataTable(
+                  userData.transcripts,
+                  "transcripts",
+                  <AudioOutlined />,
+                  "transcripts"
+                )}
+              </TabPane>
 
-                <TabPane
-                  tab={
-                    <Badge count={userData.messagesWithNote.length}>
-                      <Space>
-                        <MessageOutlined />
-                        Chat with Notes
-                      </Space>
-                    </Badge>
-                  }
-                  key="messages-note"
-                >
-                  {renderDataTable(
-                    userData.messagesWithNote,
-                    [
-                      {
-                        title: "ID",
-                        dataIndex: "id",
-                        key: "id",
-                        width: 120,
-                        render: (id: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {id?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Content",
-                        dataIndex: "content",
-                        key: "content",
-                        ellipsis: true,
-                        width: 350,
-                        render: (content: string) => (
-                          <Tooltip title={content}>
-                            <Text>{content?.substring(0, 150)}...</Text>
-                          </Tooltip>
-                        ),
-                      },
-                      {
-                        title: "Sender",
-                        dataIndex: "sendFrom",
-                        key: "sendFrom",
-                        width: 100,
-                        render: (sendFrom: string) => (
-                          <Tag
-                            color={sendFrom === "ASSISTANT" ? "green" : "blue"}
-                          >
-                            {sendFrom}
-                          </Tag>
-                        ),
-                      },
-                      {
-                        title: "User ID",
-                        dataIndex: "userId",
-                        key: "userId",
-                        width: 120,
-                        render: (userId: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {userId?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Question ID",
-                        dataIndex: "questionId",
-                        key: "questionId",
-                        width: 120,
-                        render: (questionId: string) =>
-                          questionId ? (
-                            <Text code style={{ fontSize: "10px" }}>
-                              {questionId?.substring(0, 8)}...
-                            </Text>
-                          ) : (
-                            <Text type="secondary">N/A</Text>
-                          ),
-                      },
-                      {
-                        title: "Conversation ID",
-                        dataIndex: "conversationId",
-                        key: "conversationId",
-                        width: 120,
-                        render: (conversationId: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {conversationId?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Visible",
-                        dataIndex: "isShow",
-                        key: "isShow",
-                        width: 80,
-                        render: (isShow: boolean) => (
-                          <Tag color={isShow ? "green" : "red"}>
-                            {isShow ? "Yes" : "No"}
-                          </Tag>
-                        ),
-                      },
-                      {
-                        title: "Created",
-                        dataIndex: "createdAt",
-                        key: "createdAt",
-                        width: 180,
-                        render: (date: string) => formatDate(date),
-                      },
-                    ],
-                    "messages with notes",
-                    <MessageOutlined />,
-                    "messages"
-                  )}
-                </TabPane>
+              <TabPane
+                tab={
+                  <Badge count={userData.messagesWithNote.length}>
+                    <Space>
+                      <MessageOutlined />
+                      Chat with Notes
+                    </Space>
+                  </Badge>
+                }
+                key="messages-note"
+              >
+                {renderDataTable(
+                  userData.messagesWithNote,
+                  "messages with notes",
+                  <MessageOutlined />,
+                  "messages"
+                )}
+              </TabPane>
 
-                <TabPane
-                  tab={
-                    <Badge count={userData.messagesGlobal.length}>
-                      <Space>
-                        <MessageOutlined />
-                        Global Chat
-                      </Space>
-                    </Badge>
-                  }
-                  key="messages-global"
-                >
-                  {renderDataTable(
-                    userData.messagesGlobal,
-                    [
-                      {
-                        title: "ID",
-                        dataIndex: "id",
-                        key: "id",
-                        width: 120,
-                        render: (id: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {id?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Content",
-                        dataIndex: "content",
-                        key: "content",
-                        ellipsis: true,
-                        width: 350,
-                        render: (content: string) => (
-                          <Tooltip title={content}>
-                            <Text>{content?.substring(0, 150)}...</Text>
-                          </Tooltip>
-                        ),
-                      },
-                      {
-                        title: "Sender",
-                        dataIndex: "sendFrom",
-                        key: "sendFrom",
-                        width: 100,
-                        render: (sendFrom: string) => (
-                          <Tag
-                            color={sendFrom === "ASSISTANT" ? "green" : "blue"}
-                          >
-                            {sendFrom}
-                          </Tag>
-                        ),
-                      },
-                      {
-                        title: "User ID",
-                        dataIndex: "userId",
-                        key: "userId",
-                        width: 120,
-                        render: (userId: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {userId?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Question ID",
-                        dataIndex: "questionId",
-                        key: "questionId",
-                        width: 120,
-                        render: (questionId: string) =>
-                          questionId ? (
-                            <Text code style={{ fontSize: "10px" }}>
-                              {questionId?.substring(0, 8)}...
-                            </Text>
-                          ) : (
-                            <Text type="secondary">N/A</Text>
-                          ),
-                      },
-                      {
-                        title: "Conversation ID",
-                        dataIndex: "conversationId",
-                        key: "conversationId",
-                        width: 120,
-                        render: (conversationId: string) => (
-                          <Text code style={{ fontSize: "10px" }}>
-                            {conversationId?.substring(0, 8)}...
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Visible",
-                        dataIndex: "isShow",
-                        key: "isShow",
-                        width: 80,
-                        render: (isShow: boolean) => (
-                          <Tag color={isShow ? "green" : "red"}>
-                            {isShow ? "Yes" : "No"}
-                          </Tag>
-                        ),
-                      },
-                      {
-                        title: "Created",
-                        dataIndex: "createdAt",
-                        key: "createdAt",
-                        width: 180,
-                        render: (date: string) => formatDate(date),
-                      },
-                    ],
-                    "global messages",
-                    <MessageOutlined />,
-                    "messages"
-                  )}
-                </TabPane>
-              </Tabs>
-            </div>
-          )}
+              <TabPane
+                tab={
+                  <Badge count={userData.messagesGlobal.length}>
+                    <Space>
+                      <MessageOutlined />
+                      Global Chat
+                    </Space>
+                  </Badge>
+                }
+                key="messages-global"
+              >
+                {renderDataTable(
+                  userData.messagesGlobal,
+                  "global messages",
+                  <MessageOutlined />,
+                  "messages-global"
+                )}
+              </TabPane>
+
+              {/* Add other tabs... */}
+            </Tabs>
+          </div>
         </Spin>
-      </Modal>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ marginTop: "24px" }}>
+      <style jsx>{`
+        .enhanced-user-table .ant-table-thead > tr > th {
+          background: linear-gradient(90deg, #f0f2f5 0%, #fafafa 100%);
+          font-weight: 600;
+          border-bottom: 2px solid #d9d9d9;
+        }
+        .enhanced-user-table .ant-table-tbody > tr:hover > td {
+          background-color: #e6f7ff !important;
+        }
+        .enhanced-user-table .ant-table-tbody > tr:nth-child(even) {
+          background-color: #fafafa;
+        }
+        .enhanced-data-table .ant-table-thead > tr > th {
+          background-color: #fafafa;
+          font-weight: 600;
+          font-size: 12px;
+        }
+        .enhanced-data-table .ant-table-tbody > tr:hover > td {
+          background-color: #f0f9ff !important;
+        }
+        .enhanced-data-table .ant-table-cell {
+          padding: 8px;
+        }
+
+        /* Enhanced horizontal scrolling styles */
+        .enhanced-user-table .ant-table-container,
+        .enhanced-data-table .ant-table-container {
+          overflow: auto;
+        }
+
+        .enhanced-user-table .ant-table-body,
+        .enhanced-data-table .ant-table-body {
+          overflow-x: auto;
+          overflow-y: auto;
+        }
+
+        /* Scrollbar styling for better UX */
+        .enhanced-user-table .ant-table-body::-webkit-scrollbar,
+        .enhanced-data-table .ant-table-body::-webkit-scrollbar {
+          height: 8px;
+          width: 8px;
+        }
+
+        .enhanced-user-table .ant-table-body::-webkit-scrollbar-track,
+        .enhanced-data-table .ant-table-body::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 4px;
+        }
+
+        .enhanced-user-table .ant-table-body::-webkit-scrollbar-thumb,
+        .enhanced-data-table .ant-table-body::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 4px;
+        }
+
+        .enhanced-user-table .ant-table-body::-webkit-scrollbar-thumb:hover,
+        .enhanced-data-table .ant-table-body::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8;
+        }
+
+        /* Ensure proper column widths for very wide content */
+        .enhanced-data-table .ant-table-cell {
+          white-space: nowrap;
+          max-width: 300px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .enhanced-user-table .ant-table-cell {
+          white-space: nowrap;
+        }
+      `}</style>
+
+      {viewMode === "list" ? (
+        <Card
+          title={
+            <Space>
+              <UserOutlined style={{ fontSize: "20px", color: "#1890ff" }} />
+              <Title level={4} style={{ margin: 0 }}>
+                User Management
+              </Title>
+              <Tag color="blue">{environment}</Tag>
+              <Tag color="green">{users.length} users loaded</Tag>
+            </Space>
+          }
+          extra={
+            <Space>
+              <Search
+                placeholder="Search by Device ID"
+                allowClear
+                onSearch={handleSearch}
+                style={{ width: 250 }}
+                prefix={<SearchOutlined />}
+              />
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={handleRefreshUsers}
+                loading={loading}
+                type="primary"
+              >
+                Refresh
+              </Button>
+            </Space>
+          }
+        >
+          <Table
+            columns={columns}
+            dataSource={users}
+            loading={loading}
+            rowKey={(record) => record.userid || record.id || record.deviceId}
+            pagination={false}
+            size="middle"
+            scroll={{
+              x: "max-content", // Allow horizontal scroll for wide content
+              y: 600, // Increase height for better viewing
+            }}
+            style={{
+              marginBottom: "16px",
+              overflowX: "auto", // Ensure horizontal scrolling
+            }}
+            className="enhanced-user-table"
+            bordered
+          />
+
+          <div style={{ textAlign: "right" }}>
+            <Pagination
+              current={pagination.current}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
+              onChange={handlePaginationChange}
+              showSizeChanger
+              showQuickJumper
+              showTotal={(total, range) =>
+                `${range[0]}-${range[1]} of ${total} users`
+              }
+            />
+          </div>
+        </Card>
+      ) : (
+        renderUserProfile()
+      )}
 
       {/* Change Device ID Modal */}
       <Modal
@@ -1733,3 +2912,5 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     </div>
   );
 };
+
+export default UserManagement;
