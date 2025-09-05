@@ -258,10 +258,10 @@ export const EnhancedUserManagement: React.FC<EnhancedUserManagementProps> = ({
     total: 0,
   });
 
-  // API service hook
+  // API service hook - now uses selectedUser?.deviceId and will be recreated when user changes
   const apiService = useApiService({
     environment,
-    deviceId: selectedUser?.deviceId,
+    deviceId: selectedUser?.deviceId || "", // Provide empty string as fallback
   });
 
   // Filter handlers for each section
@@ -368,48 +368,75 @@ export const EnhancedUserManagement: React.FC<EnhancedUserManagementProps> = ({
       setViewMode("profile");
       setUserDetails(user);
 
-      // Load initial data for all sections
-      const [filesRes, foldersRes, messagesRes, messagesGlobalRes] =
-        await Promise.allSettled([
-          apiService.loadFiles(filterConfigs.files.defaultValues),
-          apiService.loadFolders(filterConfigs.folders.defaultValues),
-          apiService.loadMessages(filterConfigs.messages.defaultValues),
-          apiService.loadMessagesGlobal(
-            filterConfigs["messages-global"].defaultValues
-          ),
-        ]);
+      console.log("Loading user details for deviceId:", user.deviceId);
 
-      const newUserData: UserData = {
-        files:
-          filesRes.status === "fulfilled" && filesRes.value.data
-            ? filesRes.value.data.items || filesRes.value.data || []
-            : [],
-        folders:
-          foldersRes.status === "fulfilled" && foldersRes.value.data
-            ? foldersRes.value.data.items || foldersRes.value.data || []
-            : [],
-        transcripts: [], // Load on demand when transcript filter is used
-        messagesWithNote:
-          messagesRes.status === "fulfilled" && messagesRes.value.data
-            ? messagesRes.value.data.items || messagesRes.value.data || []
-            : [],
-        messagesGlobal:
-          messagesGlobalRes.status === "fulfilled" &&
-          messagesGlobalRes.value.data
-            ? messagesGlobalRes.value.data.items ||
-              messagesGlobalRes.value.data ||
-              []
-            : [],
-      };
-
-      setUserData(newUserData);
+      // Reset previous user data immediately
+      setUserData({
+        files: [],
+        folders: [],
+        transcripts: [],
+        messagesWithNote: [],
+        messagesGlobal: [],
+      });
 
       if (onUserSelect) {
         onUserSelect(user);
       }
     },
-    [apiService, onUserSelect]
+    [onUserSelect]
   );
+
+  // Load data when selectedUser changes
+  useEffect(() => {
+    if (!selectedUser || viewMode !== "profile") return;
+
+    const loadData = async () => {
+      try {
+        console.log("Loading data for selected user:", selectedUser.deviceId);
+
+        // Load initial data for all sections
+        const [filesRes, foldersRes, messagesRes, messagesGlobalRes] =
+          await Promise.allSettled([
+            apiService.loadFiles(filterConfigs.files.defaultValues),
+            apiService.loadFolders(filterConfigs.folders.defaultValues),
+            apiService.loadMessages(filterConfigs.messages.defaultValues),
+            apiService.loadMessagesGlobal(
+              filterConfigs["messages-global"].defaultValues
+            ),
+          ]);
+
+        const newUserData: UserData = {
+          files:
+            filesRes.status === "fulfilled" && filesRes.value.data
+              ? filesRes.value.data.items || filesRes.value.data || []
+              : [],
+          folders:
+            foldersRes.status === "fulfilled" && foldersRes.value.data
+              ? foldersRes.value.data.items || foldersRes.value.data || []
+              : [],
+          transcripts: [], // Load on demand when transcript filter is used
+          messagesWithNote:
+            messagesRes.status === "fulfilled" && messagesRes.value.data
+              ? messagesRes.value.data.items || messagesRes.value.data || []
+              : [],
+          messagesGlobal:
+            messagesGlobalRes.status === "fulfilled" &&
+            messagesGlobalRes.value.data
+              ? messagesGlobalRes.value.data.items ||
+                messagesGlobalRes.value.data ||
+                []
+              : [],
+        };
+
+        setUserData(newUserData);
+        console.log("User data loaded successfully:", newUserData);
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      }
+    };
+
+    loadData();
+  }, [selectedUser, viewMode, apiService]);
 
   // Device ID change handler
   const handleChangeDeviceId = useCallback(async () => {

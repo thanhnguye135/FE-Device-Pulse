@@ -9,13 +9,11 @@ import {
 export interface FoldersFilterForm {
   page: string;
   limit: string;
-  parentId: string;
   fieldSort: string;
   sort: string;
   keyword: string;
   fieldQuery: string;
   id: string;
-  include: string;
 }
 
 interface FoldersFilterComponentProps {
@@ -28,13 +26,11 @@ interface FoldersFilterComponentProps {
 const defaultValues: FoldersFilterForm = {
   page: "1",
   limit: "10",
-  parentId: "",
   fieldSort: "",
   sort: "",
   keyword: "",
   fieldQuery: "",
   id: "",
-  include: "",
 };
 
 const filterFields: FilterFieldConfig[] = [
@@ -52,17 +48,9 @@ const filterFields: FilterFieldConfig[] = [
     placeholder: "Select field to search",
     options: [
       { value: "", label: "All fields" },
-      { value: "name", label: "Folder Name" },
-      { value: "description", label: "Description" },
-      { value: "path", label: "Path" },
+      { value: "name", label: "Name" },
+      { value: "icon", label: "Icon" },
     ],
-    colProps: { xs: 24, sm: 12, md: 8, lg: 6 },
-  },
-  {
-    name: "parentId",
-    label: "Parent Folder ID",
-    type: "input",
-    placeholder: "Enter parent folder ID...",
     colProps: { xs: 24, sm: 12, md: 8, lg: 6 },
   },
   {
@@ -115,13 +103,6 @@ const filterFields: FilterFieldConfig[] = [
       { value: "100", label: "100 results" },
     ],
     colProps: { xs: 24, sm: 12, md: 6, lg: 4 },
-  },
-  {
-    name: "include",
-    label: "Include Related",
-    type: "input",
-    placeholder: "Include related data...",
-    colProps: { xs: 24, sm: 12, md: 8, lg: 6 },
   },
 ];
 

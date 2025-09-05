@@ -23,16 +23,16 @@ interface TranscriptsFilterComponentProps {
 const defaultValues: TranscriptsFilterForm = {
   fileId: "",
   isHighlighted: "",
-  cursor: "",
+  cursor: "0",
   limit: "10",
 };
 
 const filterFields: FilterFieldConfig[] = [
   {
     name: "fileId",
-    label: "File ID",
+    label: "File ID *",
     type: "input",
-    placeholder: "Enter file ID...",
+    placeholder: "Enter file ID (required)...",
     colProps: { xs: 24, sm: 12, md: 8, lg: 6 },
   },
   {
@@ -50,8 +50,8 @@ const filterFields: FilterFieldConfig[] = [
   {
     name: "cursor",
     label: "Pagination Cursor",
-    type: "input",
-    placeholder: "Enter pagination cursor...",
+    type: "number",
+    placeholder: "Enter pagination cursor (based on orderIndex)...",
     colProps: { xs: 24, sm: 12, md: 8, lg: 6 },
   },
   {

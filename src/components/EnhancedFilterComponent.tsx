@@ -1,5 +1,5 @@
-// components/EnhancedFilterComponent.tsx - Base component for module-specific filters
-import React from "react";
+// components/EnhancedFilterComponent.tsx - Optimized base component for module-specific filters
+import React, { memo, useMemo, useCallback } from "react";
 import { FieldValues, Controller } from "react-hook-form";
 import {
   Card,
@@ -47,6 +47,71 @@ export interface EnhancedFilterProps<T extends FieldValues> {
   className?: string;
 }
 
+// Memoized field renderer to prevent unnecessary re-renders
+const FilterField = memo<{
+  field: FilterFieldConfig;
+  control: any;
+}>(({ field, control }) => {
+  const { name, label, type, placeholder, options, colProps = {} } = field;
+  const defaultColProps = { xs: 24, sm: 12, md: 8, lg: 6, ...colProps };
+
+  const renderFieldInput = useCallback((formField: any) => {
+    switch (type) {
+      case "select":
+        return (
+          <Select
+            {...formField}
+            placeholder={placeholder || `Select ${label.toLowerCase()}`}
+            size="small"
+            allowClear
+            style={{ width: "100%" }}
+            loading={false}
+          >
+            {options?.map((option) => (
+              <Select.Option key={option.value} value={option.value}>
+                {option.label}
+              </Select.Option>
+            ))}
+          </Select>
+        );
+      case "number":
+        return (
+          <Input
+            {...formField}
+            type="number"
+            placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+            size="small"
+            style={{ width: "100%" }}
+          />
+        );
+      default:
+        return (
+          <Input
+            {...formField}
+            placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+            size="small"
+            style={{ width: "100%" }}
+          />
+        );
+    }
+  }, [type, placeholder, label, options]);
+
+  return (
+    <Col {...defaultColProps}>
+      <div style={{ marginBottom: 8 }}>
+        <Text strong>{label}:</Text>
+      </div>
+      <Controller
+        name={name as any}
+        control={control}
+        render={({ field: formField }) => renderFieldInput(formField)}
+      />
+    </Col>
+  );
+});
+
+FilterField.displayName = "FilterField";
+
 export function EnhancedFilterComponent<T extends FieldValues>({
   module,
   title,
@@ -76,28 +141,80 @@ export function EnhancedFilterComponent<T extends FieldValues>({
 
   const { control } = form;
 
-  const renderField = (field: FilterFieldConfig) => {
-    const { name, label, type, placeholder, options, colProps = {} } = field;
-    const defaultColProps = { xs: 24, sm: 12, md: 8, lg: 6, ...colProps };
+  // Memoize fields rendering to prevent unnecessary re-renders
+  const fieldsRender = useMemo(() => {
+    return fields.map((field) => (
+      <FilterField key={field.name} field={field} control={control} />
+    ));
+  }, [fields, control]);
 
-    return (
-      <Col key={name} {...defaultColProps}>
-        <div style={{ marginBottom: 8 }}>
-          <Text strong>{label}:</Text>
-        </div>
-        <Controller
-          name={name as any}
-          control={control}
-          render={({ field: formField }) => {
-            switch (type) {
-              case "select":
-                return (
-                  <Select
-                    {...formField}
-                    placeholder={placeholder || `Select ${label.toLowerCase()}`}
-                    size="small"
-                    allowClear
-                    style={{ width: "100%" }}
+  // Memoize button actions to prevent recreation
+  const handleFindClick = useCallback(() => {
+    handleFind();
+  }, [handleFind]);
+
+  const handleResetClick = useCallback(() => {
+    handleReset();
+  }, [handleReset]);
+
+  // Memoize loading state
+  const loadingState = isLoading || isSubmitting;
+
+  // Memoize card title
+  const cardTitle = useMemo(() => (
+    <Space>
+      {icon}
+      <span>{title}</span>
+      {hasUnsavedChanges && (
+        <Badge
+          status="warning"
+          text="Unsaved changes"
+          style={{ fontSize: "12px" }}
+        />
+      )}
+    </Space>
+  ), [icon, title, hasUnsavedChanges]);
+
+  // Memoize extra buttons
+  const extraButtons = useMemo(() => (
+    <Space>
+      <Button
+        type="default"
+        icon={<ReloadOutlined />}
+        onClick={handleResetClick}
+        size="small"
+        disabled={loadingState}
+      >
+        Reset
+      </Button>
+      <Button
+        type="primary"
+        icon={<SearchOutlined />}
+        onClick={handleFindClick}
+        size="small"
+        loading={loadingState}
+      >
+        Find
+      </Button>
+    </Space>
+  ), [handleResetClick, handleFindClick, loadingState]);
+
+  return (
+    <Spin spinning={loadingState} tip="Processing filters...">
+      <Card
+        title={cardTitle}
+        size="small"
+        style={{ marginBottom: 16 }}
+        className={className}
+        extra={extraButtons}
+      >
+        <Row gutter={[8, 8]}>
+          {fieldsRender}
+        </Row>
+      </Card>
+    </Spin>
+  );
+}
                   >
                     {options?.map((option) => (
                       <Option key={option.value} value={option.value}>

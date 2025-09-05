@@ -1636,11 +1636,16 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
     const headers = {
       "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
-      "x-device-id": selectedUser?.deviceId || deviceId,
+      "x-device-id": deviceId, // Always use the passed deviceId parameter
       "Content-Type": "application/json",
     };
 
-    console.log("Loading detailed user data for deviceId:", deviceId);
+    console.log(
+      "Loading detailed user data for deviceId:",
+      deviceId,
+      "Headers:",
+      headers
+    );
 
     try {
       // Build query parameters for each API call (without deviceId - now in header)
@@ -1871,15 +1876,16 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
   const loadUserDetails = async (user: User) => {
     console.log("Loading user details for:", user);
+
+    // First, immediately set the user and view mode
     setSelectedUser(user);
     setViewMode("profile");
+    setUserDetails(user); // Set basic user details immediately
     setUserDetailsLoading(true);
 
     try {
-      // Set basic user details (just the raw data)
-      setUserDetails(user);
-
-      // Load comprehensive user data using deviceId
+      // Load comprehensive user data using the user's deviceId
+      console.log("Loading data for deviceId:", user.deviceId);
       const userData = await loadUserData(user.deviceId);
       setUserData(userData);
 
