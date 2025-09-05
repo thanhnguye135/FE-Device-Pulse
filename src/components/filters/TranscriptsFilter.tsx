@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Input, Select, Button, Row, Col, Card } from "antd";
+import { Input, Button, Row, Col, Card } from "antd";
 import {
   SearchOutlined,
   RollbackOutlined,
@@ -7,8 +7,6 @@ import {
 } from "@ant-design/icons";
 import { useWatch } from "react-hook-form";
 import { TranscriptsFilterForm } from "../../types/filters";
-
-const { Option } = Select;
 
 interface TranscriptsFilterProps {
   control: any;
@@ -97,17 +95,13 @@ const TranscriptsFilter: React.FC<TranscriptsFilterProps> = ({
               />
             </Col>
             <Col xs={12} sm={8} md={6} lg={6}>
-              <Select
-                placeholder="Filter by highlights"
+              <Input
+                placeholder="Filter by highlights (true/false)"
                 size="small"
-                style={{ width: "100%" }}
-                value={watchedValues?.isHighlighted}
-                onChange={(value) => setValue("isHighlighted", value)}
+                value={watchedValues?.isHighlighted || ""}
+                onChange={(e) => setValue("isHighlighted", e.target.value)}
                 allowClear
-              >
-                <Option value="true">✓ Highlighted</Option>
-                <Option value="false">Non-highlighted</Option>
-              </Select>
+              />
             </Col>
             <Col xs={12} sm={8} md={4} lg={4}>
               <Input

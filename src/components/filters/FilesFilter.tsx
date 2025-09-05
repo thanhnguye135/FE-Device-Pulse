@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Input, Select, Button, Row, Col, Card } from "antd";
+import { Input, Button, Row, Col, Card } from "antd";
 import { SearchOutlined, RollbackOutlined } from "@ant-design/icons";
 import { useWatch } from "react-hook-form";
 import { FilesFilterForm } from "../../types/filters";
-
-const { Option } = Select;
 
 interface FilesFilterProps {
   control: any;
@@ -104,47 +102,31 @@ const FilesFilter: React.FC<FilesFilterProps> = ({
               />
             </Col>
             <Col xs={12} sm={8} md={6} lg={5}>
-              <Select
-                placeholder="Search field"
+              <Input
+                placeholder="Search field (title, summary, originalFilename, description)"
                 size="small"
-                style={{ width: "100%" }}
-                value={watchedValues?.fieldQuery}
-                onChange={(value) => setValue("fieldQuery", value)}
+                value={watchedValues?.fieldQuery || ""}
+                onChange={(e) => setValue("fieldQuery", e.target.value)}
                 allowClear
-              >
-                <Option value="title">Title</Option>
-                <Option value="summary">Summary</Option>
-                <Option value="originalFilename">Filename</Option>
-                <Option value="description">Description</Option>
-              </Select>
+              />
             </Col>
             <Col xs={12} sm={8} md={5} lg={4}>
-              <Select
-                placeholder="Sort by"
+              <Input
+                placeholder="Sort by (createdAt, updatedAt, title, duration)"
                 size="small"
-                style={{ width: "100%" }}
-                value={watchedValues?.fieldSort}
-                onChange={(value) => setValue("fieldSort", value)}
+                value={watchedValues?.fieldSort || ""}
+                onChange={(e) => setValue("fieldSort", e.target.value)}
                 allowClear
-              >
-                <Option value="createdAt">Created</Option>
-                <Option value="updatedAt">Updated</Option>
-                <Option value="title">Title</Option>
-                <Option value="duration">Duration</Option>
-              </Select>
+              />
             </Col>
             <Col xs={8} sm={6} md={3} lg={3}>
-              <Select
-                placeholder="Order"
+              <Input
+                placeholder="Order (asc, desc)"
                 size="small"
-                style={{ width: "100%" }}
-                value={watchedValues?.sort}
-                onChange={(value) => setValue("sort", value)}
+                value={watchedValues?.sort || ""}
+                onChange={(e) => setValue("sort", e.target.value)}
                 allowClear
-              >
-                <Option value="asc">↑ Asc</Option>
-                <Option value="desc">↓ Desc</Option>
-              </Select>
+              />
             </Col>
             <Col xs={8} sm={6} md={4} lg={3}>
               <Input
@@ -169,21 +151,13 @@ const FilesFilter: React.FC<FilesFilterProps> = ({
           {/* Second row of filters */}
           <Row gutter={[8, 8]} align="middle" style={{ marginTop: 8 }}>
             <Col xs={24} sm={12} md={8} lg={6}>
-              <Select
-                placeholder="Include data"
+              <Input
+                placeholder="Include data (audio, text, speakers, actionItems or comma-separated)"
                 size="small"
-                style={{ width: "100%" }}
-                value={watchedValues?.include}
-                onChange={(value) => setValue("include", value)}
+                value={watchedValues?.include || ""}
+                onChange={(e) => setValue("include", e.target.value)}
                 allowClear
-              >
-                <Option value="audio">Audio</Option>
-                <Option value="text">Text</Option>
-                <Option value="speakers">Speakers</Option>
-                <Option value="actionItems">Action Items</Option>
-                <Option value="audio,text">Audio + Text</Option>
-                <Option value="audio,text,speakers">All</Option>
-              </Select>
+              />
             </Col>
             <Col xs={8} sm={6} md={4} lg={3}>
               <Input
