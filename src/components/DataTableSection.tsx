@@ -78,7 +78,7 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
                 message.success("ID copied to clipboard");
               };
               return (
-                <Tooltip title={`Click to copy: ${value}`}>
+                <Tooltip title="Click to copy">
                   <Text
                     code
                     style={{
@@ -104,7 +104,7 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
               };
 
               return (
-                <Tooltip title={`Click to copy: ${value}`}>
+                <Tooltip title="Click to copy">
                   <Text
                     style={{
                       cursor: "pointer",
@@ -128,7 +128,7 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
             };
 
             return (
-              <Tooltip title={`Click to copy: ${stringValue}`}>
+              <Tooltip title="Click to copy">
                 <Text
                   style={{
                     cursor: "pointer",
@@ -200,7 +200,11 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
       >
         {!data || data.length === 0 ? (
           <Empty
-            description={`No ${title.toLowerCase()} found for this user`}
+            description={
+              title.toLowerCase() === "transcripts"
+                ? "Select a File ID in the filter above to view transcripts"
+                : `No ${title.toLowerCase()} found for this user`
+            }
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
         ) : (

@@ -34,43 +34,44 @@ const FilesFilter: React.FC<FilesFilterProps> = ({
   }, []);
 
   // Debounced search effect
-  useEffect(() => {
-    // Skip if not initialized
-    if (!isInitialized || !watchedValues) {
-      return;
-    }
+  // Disabled auto-search - only search when clicking Find button
+  // useEffect(() => {
+  //   // Skip if not initialized
+  //   if (!isInitialized || !watchedValues) {
+  //     return;
+  //   }
 
-    // Clear previous timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+  //   // Clear previous timeout
+  //   if (timeoutRef.current) {
+  //     clearTimeout(timeoutRef.current);
+  //   }
 
-    // Check for meaningful filter values (excluding defaults)
-    const hasRealFilters = Object.entries(watchedValues).some(
-      ([key, value]) => {
-        if (!value || value === "") return false;
+  //   // Check for meaningful filter values (excluding defaults)
+  //   const hasRealFilters = Object.entries(watchedValues).some(
+  //     ([key, value]) => {
+  //       if (!value || value === "") return false;
 
-        // Skip pagination defaults
-        if (key === "page" && (value === "1" || value === 1)) return false;
-        if (key === "limit" && (value === "10" || value === 10)) return false;
+  //       // Skip pagination defaults
+  //       if (key === "page" && (value === "1" || value === 1)) return false;
+  //       if (key === "limit" && (value === "10" || value === 10)) return false;
 
-        return true;
-      }
-    );
+  //       return true;
+  //     }
+  //   );
 
-    // Only trigger search if there are real filter values
-    if (hasRealFilters) {
-      timeoutRef.current = setTimeout(() => {
-        onSearch(watchedValues as FilesFilterForm);
-      }, 500);
-    }
+  //   // Only trigger search if there are real filter values
+  //   if (hasRealFilters) {
+  //     timeoutRef.current = setTimeout(() => {
+  //       onSearch(watchedValues as FilesFilterForm);
+  //     }, 500);
+  //   }
 
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [watchedValues, isInitialized, onSearch]);
+  //   return () => {
+  //     if (timeoutRef.current) {
+  //       clearTimeout(timeoutRef.current);
+  //     }
+  //   };
+  // }, [watchedValues, isInitialized, onSearch]);
 
   const handleManualSearch = () => {
     const values = getValues();

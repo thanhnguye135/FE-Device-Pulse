@@ -150,7 +150,12 @@ export const useUserDataLoader = ({
         transcriptsParams.append("limit", transcriptsFormData.limit);
 
       try {
-        if (transcriptsFormData.fileId) {
+        // Always fetch transcripts if fileId is provided
+        // Otherwise set empty array to avoid API error
+        if (
+          transcriptsFormData.fileId &&
+          transcriptsFormData.fileId.trim() !== ""
+        ) {
           const response = await fetch(
             `${baseUrl}/api/v1/admin/transcripts?${transcriptsParams}`,
             { headers }
@@ -160,6 +165,9 @@ export const useUserDataLoader = ({
             const transcripts = transcriptData.data?.data || [];
             setUserData((prev) => ({ ...prev, transcripts }));
           }
+        } else {
+          // If no fileId provided, set empty array to avoid API error
+          setUserData((prev) => ({ ...prev, transcripts: [] }));
         }
       } catch (error) {
         console.error("Error loading transcripts:", error);

@@ -32,36 +32,37 @@ const FoldersFilter: React.FC<FoldersFilterProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    if (!isInitialized || !watchedValues) {
-      return;
-    }
+  // Disabled auto-search - only search when clicking Find button
+  // useEffect(() => {
+  //   if (!isInitialized || !watchedValues) {
+  //     return;
+  //   }
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+  //   if (timeoutRef.current) {
+  //     clearTimeout(timeoutRef.current);
+  //   }
 
-    const hasRealFilters = Object.entries(watchedValues).some(
-      ([key, value]) => {
-        if (!value || value === "") return false;
-        if (key === "page" && (value === "1" || value === 1)) return false;
-        if (key === "limit" && (value === "10" || value === 10)) return false;
-        return true;
-      }
-    );
+  //   const hasRealFilters = Object.entries(watchedValues).some(
+  //     ([key, value]) => {
+  //       if (!value || value === "") return false;
+  //       if (key === "page" && (value === "1" || value === 1)) return false;
+  //       if (key === "limit" && (value === "10" || value === 10)) return false;
+  //       return true;
+  //     }
+  //   );
 
-    if (hasRealFilters) {
-      timeoutRef.current = setTimeout(() => {
-        onSearch(watchedValues as FoldersFilterForm);
-      }, 500);
-    }
+  //   if (hasRealFilters) {
+  //     timeoutRef.current = setTimeout(() => {
+  //       onSearch(watchedValues as FoldersFilterForm);
+  //     }, 500);
+  //   }
 
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [watchedValues, isInitialized, onSearch]);
+  //   return () => {
+  //     if (timeoutRef.current) {
+  //       clearTimeout(timeoutRef.current);
+  //     }
+  //   };
+  // }, [watchedValues, isInitialized, onSearch]);
 
   const handleManualSearch = () => {
     const values = getValues();

@@ -72,7 +72,7 @@ export const renderCellValue = (value: any) => {
     const displayString = JSON.stringify(value).substring(0, 30);
 
     return (
-      <Tooltip title={<pre>{jsonString}</pre>}>
+      <Tooltip title="Click to copy">
         <Text
           code
           style={{ fontSize: "10px", cursor: "pointer", color: "#1890ff" }}
@@ -90,7 +90,7 @@ export const renderCellValue = (value: any) => {
   if (typeof value === "string") {
     if (value.length > 50) {
       return (
-        <Tooltip title={`Click to copy: ${value}`}>
+        <Tooltip title="Click to copy">
           <Text
             style={{ cursor: "pointer", color: "#1890ff" }}
             onClick={createCopyHandler(value, "Text copied to clipboard")}
@@ -104,7 +104,7 @@ export const renderCellValue = (value: any) => {
     // Date format detection
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
       return (
-        <Tooltip title={`Click to copy: ${value}`}>
+        <Tooltip title="Click to copy">
           <Text
             style={{ fontSize: "11px", cursor: "pointer", color: "#1890ff" }}
             onClick={createCopyHandler(value)}
@@ -119,7 +119,7 @@ export const renderCellValue = (value: any) => {
     // ID format detection
     if (value.length > 20 && /^[a-f0-9-]+$/i.test(value)) {
       return (
-        <Tooltip title={`Click to copy: ${value}`}>
+        <Tooltip title="Click to copy">
           <Text
             code
             style={{ fontSize: "10px", cursor: "pointer", color: "#1890ff" }}
@@ -134,7 +134,7 @@ export const renderCellValue = (value: any) => {
     // Long text detection
     if (value.length > 30) {
       return (
-        <Tooltip title={`Click to copy: ${value}`}>
+        <Tooltip title="Click to copy">
           <Text
             style={{ cursor: "pointer", color: "#1890ff" }}
             onClick={createCopyHandler(value)}
@@ -164,7 +164,7 @@ export const renderUserId = (userid: string, record: any) => {
 
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
-      <Tooltip title={`Click to copy: ${userIdValue}`}>
+      <Tooltip title="Click to copy">
         <Text
           code
           style={{
@@ -192,7 +192,7 @@ export const renderUserId = (userid: string, record: any) => {
 export const renderDeviceId = (deviceId: string) => {
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
-      <Tooltip title={`Click to copy: ${deviceId}`}>
+      <Tooltip title="Click to copy">
         <Text
           code
           style={{

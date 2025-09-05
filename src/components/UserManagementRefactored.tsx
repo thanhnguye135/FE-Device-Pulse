@@ -108,12 +108,14 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
   const [changingDeviceId, setChangingDeviceId] = useState(false);
 
   // Pagination and search
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // Input value only
+  const [searchQuery, setSearchQuery] = useState(""); // Actual search term used in API
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
+  const [activeTab, setActiveTab] = useState("files");
 
   // React Hook Form instances
   const filesForm = useForm<FilesFilterForm>({
@@ -182,6 +184,47 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     setUserData,
   });
 
+  // Handle tab change and load data on demand
+  const handleTabChange = useCallback(
+    async (key: string) => {
+      setActiveTab(key);
+
+      if (!selectedUser) return;
+
+      // Load data for the selected tab if not already loaded or if it's transcripts
+      if (key === "transcripts") {
+        await handleFilterSearch("transcripts", selectedUser.deviceId);
+      }
+    },
+    [selectedUser, handleFilterSearch]
+  );
+
+  // Auto-fetch transcripts when files are loaded and contain fileIds
+  useEffect(() => {
+    if (!selectedUser || !userData.files || userData.files.length === 0) {
+      return;
+    }
+
+    // Find first file with an id
+    const fileWithId = userData.files.find(
+      (file) => file.id && file.id.trim() !== ""
+    );
+
+    if (fileWithId && fileWithId.id) {
+      // Set fileId to transcripts form
+      transcriptsForm.setValue("fileId", fileWithId.id);
+
+      // Auto fetch transcripts with this fileId
+      handleFilterSearch("transcripts", selectedUser.deviceId);
+
+      message.success(
+        `Auto-loaded transcripts for file: ${
+          fileWithId.name || fileWithId.id.substring(0, 8) + "..."
+        }`
+      );
+    }
+  }, [userData.files, selectedUser, transcriptsForm, handleFilterSearch]);
+
   // Load users on component mount
   useEffect(() => {
     const loadUsersWrapper = async () => {
@@ -199,8 +242,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
           limit: pagination.pageSize.toString(),
         });
 
-        if (searchTerm) {
-          params.append("deviceId", searchTerm);
+        if (searchQuery) {
+          params.append("deviceId", searchQuery);
         }
 
         const url = `${baseUrl}/api/v1/admin/users/device-ids?${params}`;
@@ -233,7 +276,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     };
 
     loadUsersWrapper();
-  }, [environment, pagination.current, pagination.pageSize, searchTerm]);
+  }, [environment, pagination.current, pagination.pageSize, searchQuery]);
 
   // Load user details when viewing profile
   const loadUserDetails = async (user: User) => {
@@ -241,6 +284,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     setViewMode("profile");
     setUserDetails(user);
     setUserDetailsLoading(true);
+    setActiveTab("files"); // Reset to first tab when selecting new user
 
     try {
       // Reset all forms
@@ -250,11 +294,12 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       messagesForm.reset();
       messagesGlobalForm.reset();
 
-      // Load initial data for all sections
+      // Load files first to get fileId for transcripts
+      await handleFilterSearch("files", user.deviceId);
+
+      // Load other data in parallel
       await Promise.all([
-        handleFilterSearch("files", user.deviceId),
         handleFilterSearch("folders", user.deviceId),
-        handleFilterSearch("transcripts", user.deviceId),
         handleFilterSearch("messages", user.deviceId),
         handleFilterSearch("messages-global", user.deviceId),
       ]);
@@ -637,6 +682,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
             {/* Data Tabs */}
             <Tabs
               defaultActiveKey="files"
+              activeKey={activeTab}
+              onChange={handleTabChange}
               items={[
                 {
                   key: "files",
@@ -848,10 +895,18 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
               placeholder="Search by Device ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onSearch={(value) => setSearchTerm(value)}
+              onSearch={(value) => {
+                setSearchQuery(value);
+                setPagination((prev) => ({ ...prev, current: 1 })); // Reset to first page
+              }}
               style={{ width: 300 }}
               enterButton
               allowClear
+              onClear={() => {
+                setSearchTerm("");
+                setSearchQuery("");
+                setPagination((prev) => ({ ...prev, current: 1 }));
+              }}
             />
           }
         >
