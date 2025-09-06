@@ -102,6 +102,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     messagesWithNote: [],
     messagesGlobal: [],
   });
+  const [paginationData, setPaginationData] = useState({
+    files: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
+    folders: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
+    transcripts: { totalItems: 0, hasNextPage: false, nextCursor: null as string | null },
+    messagesWithNote: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
+    messagesGlobal: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
+  });
+
+  // Debug pagination data
+  console.log("Current paginationData:", paginationData);
+  console.log("Current userData:", userData);
 
   // Device ID change modal
   const [deviceIdChangeVisible, setDeviceIdChangeVisible] = useState(false);
@@ -185,6 +196,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     messagesForm,
     messagesGlobalForm,
     setUserData,
+    setPaginationData,
   });
 
   // Handle tab change and load data on demand
@@ -194,9 +206,27 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
 
       if (!selectedUser) return;
 
-      // Load data for the selected tab if not already loaded or if it's transcripts
-      if (key === "transcripts") {
-        await handleFilterSearch("transcripts", selectedUser.deviceId);
+      // Load data for the selected tab
+      try {
+        setUserDetailsLoading(true);
+        switch (key) {
+          case "files":
+            await handleFilterSearch("files", selectedUser.deviceId);
+            break;
+          case "folders":
+            await handleFilterSearch("folders", selectedUser.deviceId);
+            break;
+          case "messages-global":
+            await handleFilterSearch("messages-global", selectedUser.deviceId);
+            break;
+          case "transcripts":
+            await handleFilterSearch("transcripts", selectedUser.deviceId);
+            break;
+        }
+      } catch (error) {
+        console.error(`Error loading ${key} data:`, error);
+      } finally {
+        setUserDetailsLoading(false);
       }
     },
     [selectedUser, handleFilterSearch]
@@ -269,7 +299,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
         setUsers(users);
         setPagination((prev) => ({ ...prev, total }));
 
-        message.success(`Loaded ${users.length} users (${total} total)`);
+        message.success(`Loaded ${users?.length || 0} users (${total} total)`);
       } catch (error) {
         console.error("Error loading users:", error);
         message.error("Failed to load users. Please check your configuration.");
@@ -298,6 +328,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       messagesGlobalForm.reset();
 
       // Load files first to get fileId for transcripts
+      console.log("Loading files for user:", user.deviceId);
       await handleFilterSearch("files", user.deviceId);
 
       // Load other data in parallel
@@ -321,6 +352,15 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
         transcripts: [],
         messagesWithNote: [],
         messagesGlobal: [],
+      });
+      
+      // Reset pagination data on error
+      setPaginationData({
+        files: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
+        folders: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
+        transcripts: { totalItems: 0, hasNextPage: false, nextCursor: null },
+        messagesWithNote: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
+        messagesGlobal: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
       });
     } finally {
       setUserDetailsLoading(false);
@@ -722,7 +762,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                 {
                   key: "files",
                   label: (
-                    <Badge count={userData.files.length}>
+                    <Badge count={paginationData.files.totalItems}>
                       <Space>
                         <FileOutlined />
                         Files
@@ -739,7 +779,18 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         handleFilterSearch("files", selectedUser.deviceId)
                       }
                       isLoading={userDetailsLoading}
-                      onRowClick={handleFileClick} // Pass the handler here
+                      onRowClick={handleFileClick}
+                      pagination={{
+                        current: paginationData.files.current,
+                        pageSize: paginationData.files.pageSize,
+                        total: paginationData.files.totalItems,
+                        totalPages: paginationData.files.totalPages,
+                        onChange: (page, pageSize) => {
+                          filesForm.setValue("page", page.toString());
+                          if (pageSize) filesForm.setValue("limit", pageSize.toString());
+                          selectedUser && handleFilterSearch("files", selectedUser.deviceId);
+                        }
+                      }}
                     >
                       <FilesFilter
                         control={filesForm.control}
@@ -758,7 +809,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                 {
                   key: "folders",
                   label: (
-                    <Badge count={userData.folders.length}>
+                    <Badge count={paginationData.folders.totalItems}>
                       <Space>
                         <FolderOutlined />
                         Folders
@@ -775,6 +826,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         handleFilterSearch("folders", selectedUser.deviceId)
                       }
                       isLoading={userDetailsLoading}
+                      pagination={{
+                        current: paginationData.folders.current,
+                        pageSize: paginationData.folders.pageSize,
+                        total: paginationData.folders.totalItems,
+                        totalPages: paginationData.folders.totalPages,
+                        onChange: (page, pageSize) => {
+                          foldersForm.setValue("page", page.toString());
+                          if (pageSize) foldersForm.setValue("limit", pageSize.toString());
+                          selectedUser && handleFilterSearch("folders", selectedUser.deviceId);
+                        }
+                      }}
                     >
                       <FoldersFilter
                         control={foldersForm.control}
@@ -793,7 +855,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                 {
                   key: "messages-global",
                   label: (
-                    <Badge count={userData.messagesGlobal.length}>
+                    <Badge count={paginationData.messagesGlobal.totalItems}>
                       <Space>
                         <MessageOutlined />
                         Global Chat
@@ -813,6 +875,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         )
                       }
                       isLoading={userDetailsLoading}
+                      pagination={{
+                        current: paginationData.messagesGlobal.current,
+                        pageSize: paginationData.messagesGlobal.pageSize,
+                        total: paginationData.messagesGlobal.totalItems,
+                        totalPages: paginationData.messagesGlobal.totalPages,
+                        onChange: (page, pageSize) => {
+                          messagesGlobalForm.setValue("page", page.toString());
+                          if (pageSize) messagesGlobalForm.setValue("limit", pageSize.toString());
+                          selectedUser && handleFilterSearch("messages-global", selectedUser.deviceId);
+                        }
+                      }}
                     >
                       <MessagesGlobalFilter
                         control={messagesGlobalForm.control}
@@ -924,7 +997,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
               {
                 key: "transcripts",
                 label: (
-                  <Badge count={userData.transcripts.length}>
+                  <Badge count={paginationData.transcripts.totalItems}>
                     <Space>
                       <AudioOutlined />
                       Transcripts
@@ -941,6 +1014,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       handleFilterSearch("transcripts", selectedUser.deviceId)
                     }
                     isLoading={userDetailsLoading}
+                    cursorPagination={{
+                      hasNextPage: paginationData.transcripts.hasNextPage,
+                      nextCursor: paginationData.transcripts.nextCursor,
+                      totalItems: paginationData.transcripts.totalItems,
+                      onNext: () => {
+                        if (paginationData.transcripts.nextCursor) {
+                          transcriptsForm.setValue("cursor", paginationData.transcripts.nextCursor);
+                          selectedUser && handleFilterSearch("transcripts", selectedUser.deviceId);
+                        }
+                      }
+                    }}
                   >
                     <TranscriptsFilter
                       control={transcriptsForm.control}
@@ -959,7 +1043,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
               {
                 key: "messages-note",
                 label: (
-                  <Badge count={userData.messagesWithNote.length}>
+                  <Badge count={paginationData.messagesWithNote.totalItems}>
                     <Space>
                       <MessageOutlined />
                       Chat with Notes
@@ -976,6 +1060,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       handleFilterSearch("messages", selectedUser.deviceId)
                     }
                     isLoading={userDetailsLoading}
+                    pagination={{
+                      current: paginationData.messagesWithNote.current,
+                      pageSize: paginationData.messagesWithNote.pageSize,
+                      total: paginationData.messagesWithNote.totalItems,
+                      totalPages: paginationData.messagesWithNote.totalPages,
+                      onChange: (page, pageSize) => {
+                        messagesForm.setValue("page", page.toString());
+                        if (pageSize) messagesForm.setValue("limit", pageSize.toString());
+                        selectedUser && handleFilterSearch("messages", selectedUser.deviceId);
+                      }
+                    }}
                   >
                     <MessagesFilter
                       control={messagesForm.control}

@@ -22,6 +22,20 @@ interface DataTableSectionProps {
   isLoading?: boolean;
   children?: React.ReactNode; // For filter components
   onRowClick?: (record: any) => void;
+  pagination?: {
+    current: number;
+    pageSize: number;
+    total: number;
+    totalPages?: number;
+    onChange: (page: number, pageSize?: number) => void;
+  };
+  cursorPagination?: {
+    hasNextPage: boolean;
+    nextCursor: string | null;
+    totalItems: number;
+    onNext: () => void;
+    onPrev?: () => void;
+  };
 }
 
 const DataTableSection: React.FC<DataTableSectionProps> = ({
@@ -32,10 +46,12 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
   isLoading,
   children,
   onRowClick,
+  pagination,
+  cursorPagination,
 }) => {
   // Generate dynamic columns from data
   const generateDynamicColumns = (data: any[]) => {
-    if (!data || data.length === 0) return [];
+    if (!data || !Array.isArray(data) || data.length === 0) return [];
 
     const allKeys = new Set<string>();
     data.forEach((item) => {
@@ -200,7 +216,7 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
           )
         }
       >
-        {!data || data.length === 0 ? (
+        {!data || !Array.isArray(data) || data.length === 0 ? (
           <Empty
             description={
               title.toLowerCase() === "transcripts"
@@ -211,15 +227,18 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
           />
         ) : (
           <Table
-            dataSource={data}
+            dataSource={Array.isArray(data) ? data : []}
             columns={dynamicColumns}
-            pagination={{
-              pageSize: 10,
+            pagination={pagination ? {
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} items`,
-            }}
+                `${range[0]}-${range[1]} of ${total} items (${pagination.totalPages || Math.ceil(total / pagination.pageSize)} pages)`,
+              onChange: pagination.onChange,
+            } : cursorPagination ? false : false}
             size="small"
             scroll={{
               x: "max-content",
@@ -240,6 +259,27 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
               style: { cursor: 'pointer' }
             }) : undefined}
           />
+        )}
+        
+        {/* Cursor-based pagination for transcripts */}
+        {cursorPagination && (
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <Space>
+              <Text type="secondary">
+                Total: {cursorPagination.totalItems} items
+              </Text>
+              {cursorPagination.hasNextPage && (
+                <Button 
+                  onClick={cursorPagination.onNext}
+                  loading={isLoading}
+                  type="primary"
+                  size="small"
+                >
+                  Load More
+                </Button>
+              )}
+            </Space>
+          </div>
         )}
       </Card>
     </div>

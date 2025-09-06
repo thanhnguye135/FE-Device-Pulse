@@ -17,6 +17,14 @@ interface UserData {
   messagesGlobal: any[];
 }
 
+interface PaginationData {
+  files: { totalItems: number; totalPages: number; current: number; pageSize: number };
+  folders: { totalItems: number; totalPages: number; current: number; pageSize: number };
+  transcripts: { totalItems: number; hasNextPage: boolean; nextCursor: string | null };
+  messagesWithNote: { totalItems: number; totalPages: number; current: number; pageSize: number };
+  messagesGlobal: { totalItems: number; totalPages: number; current: number; pageSize: number };
+}
+
 interface UseUserDataLoaderProps {
   environment: string;
   filesForm: UseFormReturn<FilesFilterForm>;
@@ -25,6 +33,7 @@ interface UseUserDataLoaderProps {
   messagesForm: UseFormReturn<MessagesFilterForm>;
   messagesGlobalForm: UseFormReturn<MessagesGlobalFilterForm>;
   setUserData: (data: UserData | ((prev: UserData) => UserData)) => void;
+  setPaginationData: (data: PaginationData | ((prev: PaginationData) => PaginationData)) => void;
 }
 
 export const useUserDataLoader = ({
@@ -35,6 +44,7 @@ export const useUserDataLoader = ({
   messagesForm,
   messagesGlobalForm,
   setUserData,
+  setPaginationData,
 }: UseUserDataLoaderProps) => {
   const getBaseUrl = useCallback(() => {
     return environment === "production"
@@ -80,15 +90,30 @@ export const useUserDataLoader = ({
         );
         if (response.ok) {
           const filesData = await response.json();
-          const files = filesData.data?.items || filesData.data || [];
+          console.log("Files API Response:", filesData);
+          
+          // Files API returns data directly at root level
+          const files = Array.isArray(filesData.data?.items) ? filesData.data.items : 
+                        Array.isArray(filesData.items) ? filesData.items : [];
+          const totalItems = filesData.data?.totalItems || filesData.totalItems || 0;
+          const totalPages = filesData.data?.totalPages || filesData.totalPages || 0;
+          const page = parseInt(filesFormData.page || "1");
+          const limit = parseInt(filesFormData.limit || "10");
+          
+          console.log("Files extracted data:", { files: files.length, totalItems, totalPages, page, limit });
+          
           setUserData((prev) => ({ ...prev, files }));
+          setPaginationData((prev) => ({ 
+            ...prev, 
+            files: { totalItems, totalPages, current: page, pageSize: limit }
+          }));
         }
       } catch (error) {
         console.error("Error loading files:", error);
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, filesForm, setUserData]
+    [getBaseUrl, getHeaders, filesForm, setUserData, setPaginationData]
   );
 
   const loadFoldersData = useCallback(
@@ -119,15 +144,30 @@ export const useUserDataLoader = ({
         );
         if (response.ok) {
           const foldersData = await response.json();
-          const folders = foldersData.data?.items || foldersData.data || [];
+          console.log("Folders API Response:", foldersData);
+          
+          // Folders API returns data nested under 'data' property
+          const folders = Array.isArray(foldersData.data?.items) ? foldersData.data.items : 
+                          Array.isArray(foldersData.items) ? foldersData.items : [];
+          const totalItems = foldersData.data?.totalItems || foldersData.totalItems || 0;
+          const totalPages = foldersData.data?.totalPages || foldersData.totalPages || 0;
+          const page = parseInt(foldersFormData.page || "1");
+          const limit = parseInt(foldersFormData.limit || "10");
+          
+          console.log("Folders extracted data:", { folders: folders.length, totalItems, totalPages, page, limit });
+          
           setUserData((prev) => ({ ...prev, folders }));
+          setPaginationData((prev) => ({ 
+            ...prev, 
+            folders: { totalItems, totalPages, current: page, pageSize: limit }
+          }));
         }
       } catch (error) {
         console.error("Error loading folders:", error);
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, foldersForm, setUserData]
+    [getBaseUrl, getHeaders, foldersForm, setUserData, setPaginationData]
   );
 
   const loadTranscriptsData = useCallback(
@@ -161,9 +201,22 @@ export const useUserDataLoader = ({
             { headers }
           );
           if (response.ok) {
-            const transcriptData = await response.json();
-            const transcripts = transcriptData.data?.data || [];
+            const transcriptsData = await response.json();
+            console.log("Transcripts API Response:", transcriptsData);
+            
+            const transcripts = Array.isArray(transcriptsData.data?.data) ? transcriptsData.data.data : 
+                              Array.isArray(transcriptsData.items) ? transcriptsData.items : [];
+            const totalItems = transcriptsData.data?.totalItems || transcriptsData.totalItems || 0;
+            const hasNextPage = transcriptsData.data?.hasNextPage || transcriptsData.hasNextPage || false;
+            const nextCursor = transcriptsData.data?.nextCursor || transcriptsData.nextCursor || null;
+            
+            console.log("Transcripts extracted data:", { transcripts: transcripts.length, totalItems, hasNextPage, nextCursor });
+            
             setUserData((prev) => ({ ...prev, transcripts }));
+            setPaginationData((prev) => ({ 
+              ...prev, 
+              transcripts: { totalItems, hasNextPage, nextCursor }
+            }));
           }
         } else {
           // If no fileId provided, set empty array to avoid API error
@@ -174,7 +227,7 @@ export const useUserDataLoader = ({
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, transcriptsForm, setUserData]
+    [getBaseUrl, getHeaders, transcriptsForm, setUserData, setPaginationData]
   );
 
   const loadMessagesData = useCallback(
@@ -198,16 +251,29 @@ export const useUserDataLoader = ({
         );
         if (response.ok) {
           const messagesData = await response.json();
-          const messagesWithNote =
-            messagesData.data?.items || messagesData.data || [];
+          console.log("Messages with Note API Response:", messagesData);
+          
+          const messagesWithNote = Array.isArray(messagesData.data?.items) ? messagesData.data.items : 
+                                   Array.isArray(messagesData.items) ? messagesData.items : [];
+          const totalItems = messagesData.data?.totalItems || messagesData.totalItems || 0;
+          const totalPages = messagesData.data?.totalPages || messagesData.totalPages || 0;
+          const page = parseInt(messagesFormData.page || "1");
+          const limit = parseInt(messagesFormData.limit || "10");
+          
+          console.log("Messages with Note extracted data:", { messages: messagesWithNote.length, totalItems, totalPages, page, limit });
+          
           setUserData((prev) => ({ ...prev, messagesWithNote }));
+          setPaginationData((prev) => ({ 
+            ...prev, 
+            messagesWithNote: { totalItems, totalPages, current: page, pageSize: limit }
+          }));
         }
       } catch (error) {
         console.error("Error loading messages:", error);
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, messagesForm, setUserData]
+    [getBaseUrl, getHeaders, messagesForm, setUserData, setPaginationData]
   );
 
   const loadMessagesGlobalData = useCallback(
@@ -229,16 +295,29 @@ export const useUserDataLoader = ({
         );
         if (response.ok) {
           const messagesData = await response.json();
-          const messagesGlobal =
-            messagesData.data?.items || messagesData.data || [];
+          console.log("Messages Global API Response:", messagesData);
+          
+          const messagesGlobal = Array.isArray(messagesData.data?.items) ? messagesData.data.items : 
+                                 Array.isArray(messagesData.items) ? messagesData.items : [];
+          const totalItems = messagesData.data?.totalItems || messagesData.totalItems || 0;
+          const totalPages = messagesData.data?.totalPages || messagesData.totalPages || 0;
+          const page = parseInt(messagesGlobalFormData.page || "1");
+          const limit = parseInt(messagesGlobalFormData.limit || "10");
+          
+          console.log("Messages Global extracted data:", { messages: messagesGlobal.length, totalItems, totalPages, page, limit });
+          
           setUserData((prev) => ({ ...prev, messagesGlobal }));
+          setPaginationData((prev) => ({ 
+            ...prev, 
+            messagesGlobal: { totalItems, totalPages, current: page, pageSize: limit }
+          }));
         }
       } catch (error) {
         console.error("Error loading global messages:", error);
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, messagesGlobalForm, setUserData]
+    [getBaseUrl, getHeaders, messagesGlobalForm, setUserData, setPaginationData]
   );
 
   const handleFilterSearch = useCallback(
