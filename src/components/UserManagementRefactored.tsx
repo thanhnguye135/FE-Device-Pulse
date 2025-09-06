@@ -28,6 +28,7 @@ import {
   MobileOutlined,
   InfoCircleOutlined,
   RollbackOutlined,
+  MoreOutlined,
   SearchOutlined,
   FileOutlined,
   FolderOutlined,
@@ -116,6 +117,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     total: 0,
   });
   const [activeTab, setActiveTab] = useState("files");
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedFileForDetail, setSelectedFileForDetail] = useState<any>(null);
 
   // React Hook Form instances
   const filesForm = useForm<FilesFilterForm>({
@@ -375,6 +378,37 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       message.error("Failed to update device ID");
     } finally {
       setChangingDeviceId(false);
+    }
+  };
+
+  const handleFileClick = async (file: any) => {
+    if (!file || !file.id) {
+      message.warning("This file does not have an ID to fetch details.");
+      return;
+    }
+
+    if (!selectedUser) return;
+
+    // Set file and show modal
+    setSelectedFileForDetail(file);
+    setDetailModalVisible(true);
+    setUserDetailsLoading(true);
+
+    try {
+      // Set fileId in forms
+      transcriptsForm.setValue("fileId", file.id);
+      messagesForm.setValue("fileId", file.id);
+
+      // Fetch data
+      await Promise.all([
+        handleFilterSearch("transcripts", selectedUser.deviceId),
+        handleFilterSearch("messages", selectedUser.deviceId),
+      ]);
+    } catch (error) {
+      console.error("Error loading file details:", error);
+      message.error("Failed to load file details.");
+    } finally {
+      setUserDetailsLoading(false);
     }
   };
 
@@ -705,6 +739,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         handleFilterSearch("files", selectedUser.deviceId)
                       }
                       isLoading={userDetailsLoading}
+                      onRowClick={handleFileClick} // Pass the handler here
                     >
                       <FilesFilter
                         control={filesForm.control}
@@ -750,79 +785,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                           handleFilterSearch("folders", selectedUser.deviceId)
                         }
                         onReset={() => handleFilterReset("folders")}
-                        isLoading={userDetailsLoading}
-                      />
-                    </DataTableSection>
-                  ),
-                },
-                {
-                  key: "transcripts",
-                  label: (
-                    <Badge count={userData.transcripts.length}>
-                      <Space>
-                        <AudioOutlined />
-                        Transcripts
-                      </Space>
-                    </Badge>
-                  ),
-                  children: (
-                    <DataTableSection
-                      title="Transcripts"
-                      icon={<AudioOutlined />}
-                      data={userData.transcripts}
-                      onRefresh={() =>
-                        selectedUser &&
-                        handleFilterSearch("transcripts", selectedUser.deviceId)
-                      }
-                      isLoading={userDetailsLoading}
-                    >
-                      <TranscriptsFilter
-                        control={transcriptsForm.control}
-                        setValue={transcriptsForm.setValue}
-                        getValues={transcriptsForm.getValues}
-                        onSearch={(data) =>
-                          selectedUser &&
-                          handleFilterSearch(
-                            "transcripts",
-                            selectedUser.deviceId
-                          )
-                        }
-                        onReset={() => handleFilterReset("transcripts")}
-                        isLoading={userDetailsLoading}
-                      />
-                    </DataTableSection>
-                  ),
-                },
-                {
-                  key: "messages-note",
-                  label: (
-                    <Badge count={userData.messagesWithNote.length}>
-                      <Space>
-                        <MessageOutlined />
-                        Chat with Notes
-                      </Space>
-                    </Badge>
-                  ),
-                  children: (
-                    <DataTableSection
-                      title="Messages with Notes"
-                      icon={<MessageOutlined />}
-                      data={userData.messagesWithNote}
-                      onRefresh={() =>
-                        selectedUser &&
-                        handleFilterSearch("messages", selectedUser.deviceId)
-                      }
-                      isLoading={userDetailsLoading}
-                    >
-                      <MessagesFilter
-                        control={messagesForm.control}
-                        setValue={messagesForm.setValue}
-                        getValues={messagesForm.getValues}
-                        onSearch={(data) =>
-                          selectedUser &&
-                          handleFilterSearch("messages", selectedUser.deviceId)
-                        }
-                        onReset={() => handleFilterReset("messages")}
                         isLoading={userDetailsLoading}
                       />
                     </DataTableSection>
@@ -946,6 +908,93 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       ) : (
         renderUserProfile()
       )}
+
+      {/* Detail Modal for Transcripts and Messages */}
+      <Modal
+        title={`Details for File: ${selectedFileForDetail?.name || 'Unknown'}`}
+        open={detailModalVisible}
+        onCancel={() => setDetailModalVisible(false)}
+        footer={null}
+        width={"90vw"}
+        style={{ top: 20 }}
+      >
+        <Spin spinning={userDetailsLoading}>
+          <Tabs
+            items={[
+              {
+                key: "transcripts",
+                label: (
+                  <Badge count={userData.transcripts.length}>
+                    <Space>
+                      <AudioOutlined />
+                      Transcripts
+                    </Space>
+                  </Badge>
+                ),
+                children: (
+                  <DataTableSection
+                    title="Transcripts"
+                    icon={<AudioOutlined />}
+                    data={userData.transcripts}
+                    onRefresh={() =>
+                      selectedUser &&
+                      handleFilterSearch("transcripts", selectedUser.deviceId)
+                    }
+                    isLoading={userDetailsLoading}
+                  >
+                    <TranscriptsFilter
+                      control={transcriptsForm.control}
+                      setValue={transcriptsForm.setValue}
+                      getValues={transcriptsForm.getValues}
+                      onSearch={() =>
+                        selectedUser &&
+                        handleFilterSearch("transcripts", selectedUser.deviceId)
+                      }
+                      onReset={() => handleFilterReset("transcripts")}
+                      isLoading={userDetailsLoading}
+                    />
+                  </DataTableSection>
+                ),
+              },
+              {
+                key: "messages-note",
+                label: (
+                  <Badge count={userData.messagesWithNote.length}>
+                    <Space>
+                      <MessageOutlined />
+                      Chat with Notes
+                    </Space>
+                  </Badge>
+                ),
+                children: (
+                  <DataTableSection
+                    title="Messages with Notes"
+                    icon={<MessageOutlined />}
+                    data={userData.messagesWithNote}
+                    onRefresh={() =>
+                      selectedUser &&
+                      handleFilterSearch("messages", selectedUser.deviceId)
+                    }
+                    isLoading={userDetailsLoading}
+                  >
+                    <MessagesFilter
+                      control={messagesForm.control}
+                      setValue={messagesForm.setValue}
+                      getValues={messagesForm.getValues}
+                      onSearch={() =>
+                        selectedUser &&
+                        handleFilterSearch("messages", selectedUser.deviceId)
+                      }
+                      onReset={() => handleFilterReset("messages")}
+                      isLoading={userDetailsLoading}
+                    />
+                  </DataTableSection>
+                ),
+              },
+            ]}
+          />
+        </Spin>
+      </Modal>
 
       {/* Change Device ID Modal */}
       <Modal

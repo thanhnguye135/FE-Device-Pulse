@@ -21,6 +21,7 @@ interface DataTableSectionProps {
   onRefresh?: () => void;
   isLoading?: boolean;
   children?: React.ReactNode; // For filter components
+  onRowClick?: (record: any) => void;
 }
 
 const DataTableSection: React.FC<DataTableSectionProps> = ({
@@ -30,6 +31,7 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
   onRefresh,
   isLoading,
   children,
+  onRowClick,
 }) => {
   // Generate dynamic columns from data
   const generateDynamicColumns = (data: any[]) => {
@@ -233,6 +235,10 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
               overflowX: "auto",
               minWidth: "100%",
             }}
+            onRow={onRowClick ? (record) => ({
+              onClick: () => onRowClick(record),
+              style: { cursor: 'pointer' }
+            }) : undefined}
           />
         )}
       </Card>

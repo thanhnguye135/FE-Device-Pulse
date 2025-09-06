@@ -86,16 +86,6 @@ const MessagesFilter: React.FC<MessagesFilterProps> = ({
         {/* Column 1: Filter Fields */}
         <Col xs={24} sm={24} md={18} lg={20} xl={20}>
           <Row gutter={[8, 8]} align="middle">
-            <Col xs={24} sm={12} md={10} lg={10}>
-              <Input
-                placeholder="Filter by File ID"
-                value={watchedValues?.fileId || ""}
-                onChange={(e) => setValue("fileId", e.target.value)}
-                prefix={<FileOutlined />}
-                allowClear
-                size="small"
-              />
-            </Col>
             <Col xs={8} sm={6} md={4} lg={3}>
               <Input
                 placeholder="Page"

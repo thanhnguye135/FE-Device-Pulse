@@ -85,16 +85,6 @@ const TranscriptsFilter: React.FC<TranscriptsFilterProps> = ({
         {/* Column 1: Filter Fields */}
         <Col xs={24} sm={24} md={18} lg={20} xl={20}>
           <Row gutter={[8, 8]} align="middle">
-            <Col xs={24} sm={12} md={8} lg={8}>
-              <Input
-                placeholder="File ID (Required)"
-                value={watchedValues?.fileId || ""}
-                onChange={(e) => setValue("fileId", e.target.value)}
-                prefix={<FileOutlined />}
-                allowClear
-                size="small"
-              />
-            </Col>
             <Col xs={12} sm={8} md={6} lg={6}>
               <Input
                 placeholder="Filter by highlights (true/false)"
