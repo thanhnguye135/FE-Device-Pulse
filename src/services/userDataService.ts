@@ -53,8 +53,8 @@ class UserDataService {
     try {
       const baseUrl =
         environment === "production"
-          ? process.env.NEXT_PUBLIC_PROD_API_URL
-          : process.env.NEXT_PUBLIC_DEV_API_URL;
+          ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
+          : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
 
       if (!baseUrl) {
         throw new Error("API base URL not configured");

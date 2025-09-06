@@ -105,8 +105,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
   const [paginationData, setPaginationData] = useState({
     files: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
     folders: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
-    transcripts: { totalItems: 0, hasNextPage: false, nextCursor: null as string | null },
-    messagesWithNote: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
+    transcripts: {
+      totalItems: 0,
+      hasNextPage: false,
+      nextCursor: null as string | null,
+    },
+    messagesWithNote: {
+      totalItems: 0,
+      totalPages: 0,
+      current: 1,
+      pageSize: 10,
+    },
     messagesGlobal: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
   });
 
@@ -267,8 +276,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       try {
         const baseUrl =
           environment === "production"
-            ? process.env.NEXT_PUBLIC_PROD_API_URL
-            : process.env.NEXT_PUBLIC_DEV_API_URL;
+            ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
+            : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
 
         const params = new URLSearchParams({
           page: pagination.current.toString(),
@@ -353,14 +362,24 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
         messagesWithNote: [],
         messagesGlobal: [],
       });
-      
+
       // Reset pagination data on error
       setPaginationData({
         files: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
         folders: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
         transcripts: { totalItems: 0, hasNextPage: false, nextCursor: null },
-        messagesWithNote: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
-        messagesGlobal: { totalItems: 0, totalPages: 0, current: 1, pageSize: 10 },
+        messagesWithNote: {
+          totalItems: 0,
+          totalPages: 0,
+          current: 1,
+          pageSize: 10,
+        },
+        messagesGlobal: {
+          totalItems: 0,
+          totalPages: 0,
+          current: 1,
+          pageSize: 10,
+        },
       });
     } finally {
       setUserDetailsLoading(false);
@@ -378,8 +397,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     try {
       const baseUrl =
         environment === "production"
-          ? process.env.NEXT_PUBLIC_PROD_API_URL
-          : process.env.NEXT_PUBLIC_DEV_API_URL;
+          ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
+          : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
 
       const response = await fetch(
         `${baseUrl}/api/v1/admin/users/change-device-id`,
@@ -787,9 +806,11 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         totalPages: paginationData.files.totalPages,
                         onChange: (page, pageSize) => {
                           filesForm.setValue("page", page.toString());
-                          if (pageSize) filesForm.setValue("limit", pageSize.toString());
-                          selectedUser && handleFilterSearch("files", selectedUser.deviceId);
-                        }
+                          if (pageSize)
+                            filesForm.setValue("limit", pageSize.toString());
+                          selectedUser &&
+                            handleFilterSearch("files", selectedUser.deviceId);
+                        },
                       }}
                     >
                       <FilesFilter
@@ -833,9 +854,14 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         totalPages: paginationData.folders.totalPages,
                         onChange: (page, pageSize) => {
                           foldersForm.setValue("page", page.toString());
-                          if (pageSize) foldersForm.setValue("limit", pageSize.toString());
-                          selectedUser && handleFilterSearch("folders", selectedUser.deviceId);
-                        }
+                          if (pageSize)
+                            foldersForm.setValue("limit", pageSize.toString());
+                          selectedUser &&
+                            handleFilterSearch(
+                              "folders",
+                              selectedUser.deviceId
+                            );
+                        },
                       }}
                     >
                       <FoldersFilter
@@ -882,9 +908,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         totalPages: paginationData.messagesGlobal.totalPages,
                         onChange: (page, pageSize) => {
                           messagesGlobalForm.setValue("page", page.toString());
-                          if (pageSize) messagesGlobalForm.setValue("limit", pageSize.toString());
-                          selectedUser && handleFilterSearch("messages-global", selectedUser.deviceId);
-                        }
+                          if (pageSize)
+                            messagesGlobalForm.setValue(
+                              "limit",
+                              pageSize.toString()
+                            );
+                          selectedUser &&
+                            handleFilterSearch(
+                              "messages-global",
+                              selectedUser.deviceId
+                            );
+                        },
                       }}
                     >
                       <MessagesGlobalFilter
@@ -984,7 +1018,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
 
       {/* Detail Modal for Transcripts and Messages */}
       <Modal
-        title={`Details for File: ${selectedFileForDetail?.name || 'Unknown'}`}
+        title={`Details for File: ${selectedFileForDetail?.name || "Unknown"}`}
         open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
         footer={null}
@@ -1020,10 +1054,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       totalItems: paginationData.transcripts.totalItems,
                       onNext: () => {
                         if (paginationData.transcripts.nextCursor) {
-                          transcriptsForm.setValue("cursor", paginationData.transcripts.nextCursor);
-                          selectedUser && handleFilterSearch("transcripts", selectedUser.deviceId);
+                          transcriptsForm.setValue(
+                            "cursor",
+                            paginationData.transcripts.nextCursor
+                          );
+                          selectedUser &&
+                            handleFilterSearch(
+                              "transcripts",
+                              selectedUser.deviceId
+                            );
                         }
-                      }
+                      },
                     }}
                   >
                     <TranscriptsFilter
@@ -1067,9 +1108,11 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       totalPages: paginationData.messagesWithNote.totalPages,
                       onChange: (page, pageSize) => {
                         messagesForm.setValue("page", page.toString());
-                        if (pageSize) messagesForm.setValue("limit", pageSize.toString());
-                        selectedUser && handleFilterSearch("messages", selectedUser.deviceId);
-                      }
+                        if (pageSize)
+                          messagesForm.setValue("limit", pageSize.toString());
+                        selectedUser &&
+                          handleFilterSearch("messages", selectedUser.deviceId);
+                      },
                     }}
                   >
                     <MessagesFilter

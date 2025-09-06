@@ -7,13 +7,9 @@ export async function GET() {
         development: {
           apiUrl:
             process.env.BE_NOTICA_DEV || "https://api-notica.dev.apero.vn",
-          tokenUrl: process.env.TOKEN_URL_DEV || "https://id.dev.apero.vn",
         },
         production: {
           apiUrl: process.env.BE_NOTICA_PROD || "https://api-notica.apero.vn",
-          tokenUrl:
-            process.env.TOKEN_URL_PROD ||
-            "https://llm-account-service.apero.vn",
         },
       },
       defaultEnvironment:

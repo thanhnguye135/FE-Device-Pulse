@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { message } from "antd";
 import { UseFormReturn } from "react-hook-form";
+import axios from "axios";
 import {
   FilesFilterForm,
   FoldersFilterForm,
@@ -18,11 +19,35 @@ interface UserData {
 }
 
 interface PaginationData {
-  files: { totalItems: number; totalPages: number; current: number; pageSize: number };
-  folders: { totalItems: number; totalPages: number; current: number; pageSize: number };
-  transcripts: { totalItems: number; hasNextPage: boolean; nextCursor: string | null };
-  messagesWithNote: { totalItems: number; totalPages: number; current: number; pageSize: number };
-  messagesGlobal: { totalItems: number; totalPages: number; current: number; pageSize: number };
+  files: {
+    totalItems: number;
+    totalPages: number;
+    current: number;
+    pageSize: number;
+  };
+  folders: {
+    totalItems: number;
+    totalPages: number;
+    current: number;
+    pageSize: number;
+  };
+  transcripts: {
+    totalItems: number;
+    hasNextPage: boolean;
+    nextCursor: string | null;
+  };
+  messagesWithNote: {
+    totalItems: number;
+    totalPages: number;
+    current: number;
+    pageSize: number;
+  };
+  messagesGlobal: {
+    totalItems: number;
+    totalPages: number;
+    current: number;
+    pageSize: number;
+  };
 }
 
 interface UseUserDataLoaderProps {
@@ -33,7 +58,9 @@ interface UseUserDataLoaderProps {
   messagesForm: UseFormReturn<MessagesFilterForm>;
   messagesGlobalForm: UseFormReturn<MessagesGlobalFilterForm>;
   setUserData: (data: UserData | ((prev: UserData) => UserData)) => void;
-  setPaginationData: (data: PaginationData | ((prev: PaginationData) => PaginationData)) => void;
+  setPaginationData: (
+    data: PaginationData | ((prev: PaginationData) => PaginationData)
+  ) => void;
 }
 
 export const useUserDataLoader = ({
@@ -48,15 +75,17 @@ export const useUserDataLoader = ({
 }: UseUserDataLoaderProps) => {
   const getBaseUrl = useCallback(() => {
     return environment === "production"
-      ? process.env.NEXT_PUBLIC_PROD_API_URL
-      : process.env.NEXT_PUBLIC_DEV_API_URL;
+      ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
+      : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
   }, [environment]);
 
-  const getHeaders = useCallback(
+  const getAxiosConfig = useCallback(
     (deviceId: string) => ({
-      "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
-      "x-device-id": deviceId,
-      "Content-Type": "application/json",
+      headers: {
+        "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+        "x-device-id": deviceId,
+        "Content-Type": "application/json",
+      },
     }),
     []
   );
@@ -64,162 +93,150 @@ export const useUserDataLoader = ({
   const loadFilesData = useCallback(
     async (deviceId: string) => {
       const baseUrl = getBaseUrl();
-      const headers = getHeaders(deviceId);
+      const config = getAxiosConfig(deviceId);
       const filesFormData = filesForm.getValues();
 
-      const filesParams = new URLSearchParams();
-      if (filesFormData.keyword)
-        filesParams.append("keyword", filesFormData.keyword);
+      const params: Record<string, string> = {};
+      if (filesFormData.keyword) params.keyword = filesFormData.keyword;
       if (filesFormData.fieldQuery)
-        filesParams.append("fieldQuery", filesFormData.fieldQuery);
-      if (filesFormData.folderId)
-        filesParams.append("folderId", filesFormData.folderId);
-      if (filesFormData.id) filesParams.append("id", filesFormData.id);
-      if (filesFormData.fieldSort)
-        filesParams.append("fieldSort", filesFormData.fieldSort);
-      if (filesFormData.sort) filesParams.append("sort", filesFormData.sort);
-      if (filesFormData.include)
-        filesParams.append("include", filesFormData.include);
-      if (filesFormData.page) filesParams.append("page", filesFormData.page);
-      if (filesFormData.limit) filesParams.append("limit", filesFormData.limit);
+        params.fieldQuery = filesFormData.fieldQuery;
+      if (filesFormData.folderId) params.folderId = filesFormData.folderId;
+      if (filesFormData.id) params.id = filesFormData.id;
+      if (filesFormData.fieldSort) params.fieldSort = filesFormData.fieldSort;
+      if (filesFormData.sort) params.sort = filesFormData.sort;
+      if (filesFormData.include) params.include = filesFormData.include;
+      if (filesFormData.page) params.page = filesFormData.page;
+      if (filesFormData.limit) params.limit = filesFormData.limit;
 
       try {
-        const response = await fetch(
-          `${baseUrl}/api/v1/admin/files?${filesParams}`,
-          { headers }
-        );
-        if (response.ok) {
-          const filesData = await response.json();
-          console.log("Files API Response:", filesData);
-          
-          // Files API returns data directly at root level
-          const files = Array.isArray(filesData.data?.items) ? filesData.data.items : 
-                        Array.isArray(filesData.items) ? filesData.items : [];
-          const totalItems = filesData.data?.totalItems || filesData.totalItems || 0;
-          const totalPages = filesData.data?.totalPages || filesData.totalPages || 0;
-          const page = parseInt(filesFormData.page || "1");
-          const limit = parseInt(filesFormData.limit || "10");
-          
-          console.log("Files extracted data:", { files: files.length, totalItems, totalPages, page, limit });
-          
-          setUserData((prev) => ({ ...prev, files }));
-          setPaginationData((prev) => ({ 
-            ...prev, 
-            files: { totalItems, totalPages, current: page, pageSize: limit }
-          }));
-        }
+        const response = await axios.get(`${baseUrl}/api/v1/admin/files`, {
+          ...config,
+          params,
+        });
+        const filesData = response.data;
+
+        const files = Array.isArray(filesData.data?.items)
+          ? filesData.data.items
+          : Array.isArray(filesData.items)
+          ? filesData.items
+          : [];
+        const totalItems =
+          filesData.data?.totalItems || filesData.totalItems || 0;
+        const totalPages =
+          filesData.data?.totalPages || filesData.totalPages || 0;
+        const page = parseInt(filesFormData.page || "1");
+        const limit = parseInt(filesFormData.limit || "10");
+
+        setUserData((prev) => ({ ...prev, files }));
+        setPaginationData((prev) => ({
+          ...prev,
+          files: { totalItems, totalPages, current: page, pageSize: limit },
+        }));
       } catch (error) {
         console.error("Error loading files:", error);
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, filesForm, setUserData, setPaginationData]
+    [getBaseUrl, getAxiosConfig, filesForm, setUserData, setPaginationData]
   );
 
   const loadFoldersData = useCallback(
     async (deviceId: string) => {
       const baseUrl = getBaseUrl();
-      const headers = getHeaders(deviceId);
+      const config = getAxiosConfig(deviceId);
       const foldersFormData = foldersForm.getValues();
 
-      const foldersParams = new URLSearchParams();
-      if (foldersFormData.keyword)
-        foldersParams.append("keyword", foldersFormData.keyword);
+      const params: Record<string, string> = {};
+      if (foldersFormData.keyword) params.keyword = foldersFormData.keyword;
       if (foldersFormData.fieldQuery)
-        foldersParams.append("fieldQuery", foldersFormData.fieldQuery);
-      if (foldersFormData.id) foldersParams.append("id", foldersFormData.id);
+        params.fieldQuery = foldersFormData.fieldQuery;
+      if (foldersFormData.id) params.id = foldersFormData.id;
       if (foldersFormData.fieldSort)
-        foldersParams.append("fieldSort", foldersFormData.fieldSort);
-      if (foldersFormData.sort)
-        foldersParams.append("sort", foldersFormData.sort);
-      if (foldersFormData.page)
-        foldersParams.append("page", foldersFormData.page);
-      if (foldersFormData.limit)
-        foldersParams.append("limit", foldersFormData.limit);
+        params.fieldSort = foldersFormData.fieldSort;
+      if (foldersFormData.sort) params.sort = foldersFormData.sort;
+      if (foldersFormData.page) params.page = foldersFormData.page;
+      if (foldersFormData.limit) params.limit = foldersFormData.limit;
 
       try {
-        const response = await fetch(
-          `${baseUrl}/api/v1/admin/folders?${foldersParams}`,
-          { headers }
-        );
-        if (response.ok) {
-          const foldersData = await response.json();
-          console.log("Folders API Response:", foldersData);
-          
-          // Folders API returns data nested under 'data' property
-          const folders = Array.isArray(foldersData.data?.items) ? foldersData.data.items : 
-                          Array.isArray(foldersData.items) ? foldersData.items : [];
-          const totalItems = foldersData.data?.totalItems || foldersData.totalItems || 0;
-          const totalPages = foldersData.data?.totalPages || foldersData.totalPages || 0;
-          const page = parseInt(foldersFormData.page || "1");
-          const limit = parseInt(foldersFormData.limit || "10");
-          
-          console.log("Folders extracted data:", { folders: folders.length, totalItems, totalPages, page, limit });
-          
-          setUserData((prev) => ({ ...prev, folders }));
-          setPaginationData((prev) => ({ 
-            ...prev, 
-            folders: { totalItems, totalPages, current: page, pageSize: limit }
-          }));
-        }
+        const response = await axios.get(`${baseUrl}/api/v1/admin/folders`, {
+          ...config,
+          params,
+        });
+        const foldersData = response.data;
+
+        const folders = Array.isArray(foldersData.data?.items)
+          ? foldersData.data.items
+          : Array.isArray(foldersData.items)
+          ? foldersData.items
+          : [];
+        const totalItems =
+          foldersData.data?.totalItems || foldersData.totalItems || 0;
+        const totalPages =
+          foldersData.data?.totalPages || foldersData.totalPages || 0;
+        const page = parseInt(foldersFormData.page || "1");
+        const limit = parseInt(foldersFormData.limit || "10");
+
+        setUserData((prev) => ({ ...prev, folders }));
+        setPaginationData((prev) => ({
+          ...prev,
+          folders: { totalItems, totalPages, current: page, pageSize: limit },
+        }));
       } catch (error) {
         console.error("Error loading folders:", error);
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, foldersForm, setUserData, setPaginationData]
+    [getBaseUrl, getAxiosConfig, foldersForm, setUserData, setPaginationData]
   );
 
   const loadTranscriptsData = useCallback(
     async (deviceId: string) => {
       const baseUrl = getBaseUrl();
-      const headers = getHeaders(deviceId);
+      const config = getAxiosConfig(deviceId);
       const transcriptsFormData = transcriptsForm.getValues();
 
-      const transcriptsParams = new URLSearchParams();
+      const params: Record<string, string> = {};
       if (transcriptsFormData.fileId)
-        transcriptsParams.append("fileId", transcriptsFormData.fileId);
+        params.fileId = transcriptsFormData.fileId;
       if (transcriptsFormData.isHighlighted)
-        transcriptsParams.append(
-          "isHighlighted",
-          transcriptsFormData.isHighlighted
-        );
+        params.isHighlighted = transcriptsFormData.isHighlighted;
       if (transcriptsFormData.cursor)
-        transcriptsParams.append("cursor", transcriptsFormData.cursor);
-      if (transcriptsFormData.limit)
-        transcriptsParams.append("limit", transcriptsFormData.limit);
+        params.cursor = transcriptsFormData.cursor;
+      if (transcriptsFormData.limit) params.limit = transcriptsFormData.limit;
 
       try {
-        // Always fetch transcripts if fileId is provided
-        // Otherwise set empty array to avoid API error
         if (
           transcriptsFormData.fileId &&
           transcriptsFormData.fileId.trim() !== ""
         ) {
-          const response = await fetch(
-            `${baseUrl}/api/v1/admin/transcripts?${transcriptsParams}`,
-            { headers }
+          const response = await axios.get(
+            `${baseUrl}/api/v1/admin/transcripts`,
+            { ...config, params }
           );
-          if (response.ok) {
-            const transcriptsData = await response.json();
-            console.log("Transcripts API Response:", transcriptsData);
-            
-            const transcripts = Array.isArray(transcriptsData.data?.data) ? transcriptsData.data.data : 
-                              Array.isArray(transcriptsData.items) ? transcriptsData.items : [];
-            const totalItems = transcriptsData.data?.totalItems || transcriptsData.totalItems || 0;
-            const hasNextPage = transcriptsData.data?.hasNextPage || transcriptsData.hasNextPage || false;
-            const nextCursor = transcriptsData.data?.nextCursor || transcriptsData.nextCursor || null;
-            
-            console.log("Transcripts extracted data:", { transcripts: transcripts.length, totalItems, hasNextPage, nextCursor });
-            
-            setUserData((prev) => ({ ...prev, transcripts }));
-            setPaginationData((prev) => ({ 
-              ...prev, 
-              transcripts: { totalItems, hasNextPage, nextCursor }
-            }));
-          }
+          const transcriptsData = response.data;
+
+          const transcripts = Array.isArray(transcriptsData.data?.data)
+            ? transcriptsData.data.data
+            : Array.isArray(transcriptsData.items)
+            ? transcriptsData.items
+            : [];
+          const totalItems =
+            transcriptsData.data?.totalItems || transcriptsData.totalItems || 0;
+          const hasNextPage =
+            transcriptsData.data?.hasNextPage ||
+            transcriptsData.hasNextPage ||
+            false;
+          const nextCursor =
+            transcriptsData.data?.nextCursor ||
+            transcriptsData.nextCursor ||
+            null;
+
+          setUserData((prev) => ({ ...prev, transcripts }));
+          setPaginationData((prev) => ({
+            ...prev,
+            transcripts: { totalItems, hasNextPage, nextCursor },
+          }));
         } else {
-          // If no fileId provided, set empty array to avoid API error
           setUserData((prev) => ({ ...prev, transcripts: [] }));
         }
       } catch (error) {
@@ -227,97 +244,115 @@ export const useUserDataLoader = ({
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, transcriptsForm, setUserData, setPaginationData]
+    [
+      getBaseUrl,
+      getAxiosConfig,
+      transcriptsForm,
+      setUserData,
+      setPaginationData,
+    ]
   );
 
   const loadMessagesData = useCallback(
     async (deviceId: string) => {
       const baseUrl = getBaseUrl();
-      const headers = getHeaders(deviceId);
+      const config = getAxiosConfig(deviceId);
       const messagesFormData = messagesForm.getValues();
 
-      const messagesParams = new URLSearchParams();
-      if (messagesFormData.fileId)
-        messagesParams.append("fileId", messagesFormData.fileId);
-      if (messagesFormData.page)
-        messagesParams.append("page", messagesFormData.page);
-      if (messagesFormData.limit)
-        messagesParams.append("limit", messagesFormData.limit);
+      const params: Record<string, string> = {};
+      if (messagesFormData.page) params.page = messagesFormData.page;
+      if (messagesFormData.limit) params.limit = messagesFormData.limit;
 
       try {
-        const response = await fetch(
-          `${baseUrl}/api/v1/admin/messages/chat-with-note?${messagesParams}`,
-          { headers }
+        const response = await axios.get(
+          `${baseUrl}/api/v1/admin/messages/chat-with-note`,
+          { ...config, params }
         );
-        if (response.ok) {
-          const messagesData = await response.json();
-          console.log("Messages with Note API Response:", messagesData);
-          
-          const messagesWithNote = Array.isArray(messagesData.data?.items) ? messagesData.data.items : 
-                                   Array.isArray(messagesData.items) ? messagesData.items : [];
-          const totalItems = messagesData.data?.totalItems || messagesData.totalItems || 0;
-          const totalPages = messagesData.data?.totalPages || messagesData.totalPages || 0;
-          const page = parseInt(messagesFormData.page || "1");
-          const limit = parseInt(messagesFormData.limit || "10");
-          
-          console.log("Messages with Note extracted data:", { messages: messagesWithNote.length, totalItems, totalPages, page, limit });
-          
-          setUserData((prev) => ({ ...prev, messagesWithNote }));
-          setPaginationData((prev) => ({ 
-            ...prev, 
-            messagesWithNote: { totalItems, totalPages, current: page, pageSize: limit }
-          }));
-        }
+        const messagesData = response.data;
+
+        const messagesWithNote = Array.isArray(messagesData.data?.items)
+          ? messagesData.data.items
+          : Array.isArray(messagesData.items)
+          ? messagesData.items
+          : [];
+        const totalItems =
+          messagesData.data?.totalItems || messagesData.totalItems || 0;
+        const totalPages =
+          messagesData.data?.totalPages || messagesData.totalPages || 0;
+        const page = parseInt(messagesFormData.page || "1");
+        const limit = parseInt(messagesFormData.limit || "10");
+
+        setUserData((prev) => ({ ...prev, messagesWithNote }));
+        setPaginationData((prev) => ({
+          ...prev,
+          messagesWithNote: {
+            totalItems,
+            totalPages,
+            current: page,
+            pageSize: limit,
+          },
+        }));
       } catch (error) {
-        console.error("Error loading messages:", error);
+        console.error("Error loading messages with note:", error);
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, messagesForm, setUserData, setPaginationData]
+    [getBaseUrl, getAxiosConfig, messagesForm, setUserData, setPaginationData]
   );
 
   const loadMessagesGlobalData = useCallback(
     async (deviceId: string) => {
       const baseUrl = getBaseUrl();
-      const headers = getHeaders(deviceId);
+      const config = getAxiosConfig(deviceId);
       const messagesGlobalFormData = messagesGlobalForm.getValues();
 
-      const messagesGlobalParams = new URLSearchParams();
+      const params: Record<string, string> = {};
       if (messagesGlobalFormData.page)
-        messagesGlobalParams.append("page", messagesGlobalFormData.page);
+        params.page = messagesGlobalFormData.page;
       if (messagesGlobalFormData.limit)
-        messagesGlobalParams.append("limit", messagesGlobalFormData.limit);
+        params.limit = messagesGlobalFormData.limit;
 
       try {
-        const response = await fetch(
-          `${baseUrl}/api/v1/admin/messages/chat-global?${messagesGlobalParams}`,
-          { headers }
+        const response = await axios.get(
+          `${baseUrl}/api/v1/admin/messages/chat-global`,
+          { ...config, params }
         );
-        if (response.ok) {
-          const messagesData = await response.json();
-          console.log("Messages Global API Response:", messagesData);
-          
-          const messagesGlobal = Array.isArray(messagesData.data?.items) ? messagesData.data.items : 
-                                 Array.isArray(messagesData.items) ? messagesData.items : [];
-          const totalItems = messagesData.data?.totalItems || messagesData.totalItems || 0;
-          const totalPages = messagesData.data?.totalPages || messagesData.totalPages || 0;
-          const page = parseInt(messagesGlobalFormData.page || "1");
-          const limit = parseInt(messagesGlobalFormData.limit || "10");
-          
-          console.log("Messages Global extracted data:", { messages: messagesGlobal.length, totalItems, totalPages, page, limit });
-          
-          setUserData((prev) => ({ ...prev, messagesGlobal }));
-          setPaginationData((prev) => ({ 
-            ...prev, 
-            messagesGlobal: { totalItems, totalPages, current: page, pageSize: limit }
-          }));
-        }
+        const messagesData = response.data;
+
+        const messagesGlobal = Array.isArray(messagesData.data?.items)
+          ? messagesData.data.items
+          : Array.isArray(messagesData.items)
+          ? messagesData.items
+          : [];
+        const totalItems =
+          messagesData.data?.totalItems || messagesData.totalItems || 0;
+        const totalPages =
+          messagesData.data?.totalPages || messagesData.totalPages || 0;
+        const page = parseInt(messagesGlobalFormData.page || "1");
+        const limit = parseInt(messagesGlobalFormData.limit || "10");
+
+        setUserData((prev) => ({ ...prev, messagesGlobal }));
+        setPaginationData((prev) => ({
+          ...prev,
+          messagesGlobal: {
+            totalItems,
+            totalPages,
+            current: page,
+            pageSize: limit,
+          },
+        }));
       } catch (error) {
         console.error("Error loading global messages:", error);
         throw error;
       }
     },
-    [getBaseUrl, getHeaders, messagesGlobalForm, setUserData, setPaginationData]
+    [
+      getBaseUrl,
+      getAxiosConfig,
+      messagesGlobalForm,
+      setUserData,
+      setPaginationData,
+    ]
   );
 
   const handleFilterSearch = useCallback(

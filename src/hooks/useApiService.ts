@@ -19,8 +19,8 @@ export function useApiService({ environment, deviceId }: ApiServiceConfig) {
 
   const baseUrl =
     environment === "production"
-      ? process.env.NEXT_PUBLIC_PROD_API_URL
-      : process.env.NEXT_PUBLIC_DEV_API_URL;
+      ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
+      : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
 
   const getHeaders = (includeDeviceId = true) => ({
     "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",

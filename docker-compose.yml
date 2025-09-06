@@ -1,0 +1,10 @@
+services:
+  app:
+    container_name: fe-device-pulse
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
