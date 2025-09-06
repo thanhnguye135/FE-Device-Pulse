@@ -264,19 +264,25 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
         {/* Cursor-based pagination for transcripts */}
         {cursorPagination && (
           <div style={{ marginTop: 16, textAlign: 'center' }}>
-            <Space>
+            <Space direction="vertical" size="small">
               <Text type="secondary">
-                Total: {cursorPagination.totalItems} items
+                Showing {data?.length || 0} of {cursorPagination.totalItems} items
               </Text>
-              {cursorPagination.hasNextPage && (
+              {cursorPagination.hasNextPage && cursorPagination.nextCursor && (
                 <Button 
                   onClick={cursorPagination.onNext}
                   loading={isLoading}
                   type="primary"
                   size="small"
+                  disabled={!cursorPagination.nextCursor}
                 >
-                  Load More
+                  Load More ({cursorPagination.totalItems - (data?.length || 0)} remaining)
                 </Button>
+              )}
+              {!cursorPagination.hasNextPage && data && data.length > 0 && (
+                <Text type="secondary" style={{ fontStyle: 'italic' }}>
+                  All items loaded
+                </Text>
               )}
             </Space>
           </div>

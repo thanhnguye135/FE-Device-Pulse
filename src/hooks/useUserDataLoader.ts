@@ -190,7 +190,7 @@ export const useUserDataLoader = ({
   );
 
   const loadTranscriptsData = useCallback(
-    async (deviceId: string) => {
+    async (deviceId: string, appendData: boolean = false) => {
       const baseUrl = getBaseUrl();
       const config = getAxiosConfig(deviceId);
       const transcriptsFormData = transcriptsForm.getValues();
@@ -215,8 +215,10 @@ export const useUserDataLoader = ({
           );
           const transcriptsData = response.data;
 
-          const transcripts = Array.isArray(transcriptsData.data?.data)
+          const newTranscripts = Array.isArray(transcriptsData.data?.data)
             ? transcriptsData.data.data
+            : Array.isArray(transcriptsData.data?.items)
+            ? transcriptsData.data.items
             : Array.isArray(transcriptsData.items)
             ? transcriptsData.items
             : [];
@@ -231,13 +233,22 @@ export const useUserDataLoader = ({
             transcriptsData.nextCursor ||
             null;
 
-          setUserData((prev) => ({ ...prev, transcripts }));
+          setUserData((prev) => ({
+            ...prev,
+            transcripts: appendData
+              ? [...prev.transcripts, ...newTranscripts]
+              : newTranscripts,
+          }));
           setPaginationData((prev) => ({
             ...prev,
             transcripts: { totalItems, hasNextPage, nextCursor },
           }));
         } else {
           setUserData((prev) => ({ ...prev, transcripts: [] }));
+          setPaginationData((prev) => ({
+            ...prev,
+            transcripts: { totalItems: 0, hasNextPage: false, nextCursor: null },
+          }));
         }
       } catch (error) {
         console.error("Error loading transcripts:", error);
@@ -363,7 +374,8 @@ export const useUserDataLoader = ({
         | "transcripts"
         | "messages"
         | "messages-global",
-      deviceId: string
+      deviceId: string,
+      appendData: boolean = false
     ) => {
       try {
         switch (filterType) {
@@ -374,7 +386,7 @@ export const useUserDataLoader = ({
             await loadFoldersData(deviceId);
             break;
           case "transcripts":
-            await loadTranscriptsData(deviceId);
+            await loadTranscriptsData(deviceId, appendData);
             break;
           case "messages":
             await loadMessagesData(deviceId);
@@ -383,7 +395,9 @@ export const useUserDataLoader = ({
             await loadMessagesGlobalData(deviceId);
             break;
         }
-        message.success(`${filterType} data refreshed`);
+        if (!appendData) {
+          message.success(`${filterType} data refreshed`);
+        }
       } catch (error) {
         console.error(`Error refreshing ${filterType} data:`, error);
         message.error(`Failed to refresh ${filterType} data`);
@@ -416,6 +430,12 @@ export const useUserDataLoader = ({
           break;
         case "transcripts":
           transcriptsForm.reset();
+          // Clear transcripts data when resetting
+          setUserData((prev) => ({ ...prev, transcripts: [] }));
+          setPaginationData((prev) => ({
+            ...prev,
+            transcripts: { totalItems: 0, hasNextPage: false, nextCursor: null },
+          }));
           break;
         case "messages":
           messagesForm.reset();
@@ -426,7 +446,14 @@ export const useUserDataLoader = ({
       }
       message.success(`${filterType} filters reset to default`);
     },
-    [filesForm, foldersForm, transcriptsForm, messagesForm, messagesGlobalForm]
+    [filesForm, foldersForm, transcriptsForm, messagesForm, messagesGlobalForm, setUserData, setPaginationData]
+  );
+
+  const loadMoreTranscripts = useCallback(
+    async (deviceId: string) => {
+      await handleFilterSearch("transcripts", deviceId, true);
+    },
+    [handleFilterSearch]
   );
 
   return {
@@ -437,5 +464,6 @@ export const useUserDataLoader = ({
     loadMessagesGlobalData,
     handleFilterSearch,
     handleFilterReset,
+    loadMoreTranscripts,
   };
 };

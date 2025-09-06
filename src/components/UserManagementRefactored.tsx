@@ -197,7 +197,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
   });
 
   // Use the custom hook for data loading
-  const { handleFilterSearch, handleFilterReset } = useUserDataLoader({
+  const { handleFilterSearch, handleFilterReset, loadMoreTranscripts } = useUserDataLoader({
     environment,
     filesForm,
     foldersForm,
@@ -1053,16 +1053,12 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       nextCursor: paginationData.transcripts.nextCursor,
                       totalItems: paginationData.transcripts.totalItems,
                       onNext: () => {
-                        if (paginationData.transcripts.nextCursor) {
+                        if (paginationData.transcripts.nextCursor && selectedUser) {
                           transcriptsForm.setValue(
                             "cursor",
                             paginationData.transcripts.nextCursor
                           );
-                          selectedUser &&
-                            handleFilterSearch(
-                              "transcripts",
-                              selectedUser.deviceId
-                            );
+                          loadMoreTranscripts(selectedUser.deviceId);
                         }
                       },
                     }}
