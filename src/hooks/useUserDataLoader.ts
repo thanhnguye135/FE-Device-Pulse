@@ -76,6 +76,10 @@ export const useUserDataLoader = ({
 }: UseUserDataLoaderProps) => {
   // Internal cursor management for transcripts pagination
   const transcriptsCursorRef = useRef<string | null>(null);
+
+  // Track ongoing API requests to prevent duplicates
+  const ongoingRequestsRef = useRef<Set<string>>(new Set());
+
   const getBaseUrl = useCallback(() => {
     if (environment === "production") {
       return process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL;
@@ -202,21 +206,36 @@ export const useUserDataLoader = ({
       const config = getAxiosConfig(deviceId);
       const transcriptsFormData = transcriptsForm.getValues();
 
-      // Reset cursor for initial load, use stored cursor for load more
-      if (!appendData) {
-        transcriptsCursorRef.current = null;
+      // Create request key to track ongoing requests
+      const requestKey = `transcripts-${deviceId}-${transcriptsFormData.fileId}-${appendData}`;
+
+      // Check if request is already in progress
+      if (ongoingRequestsRef.current.has(requestKey)) {
+        console.log(
+          "Request already in progress, skipping duplicate:",
+          requestKey
+        );
+        return;
       }
 
-      const params: Record<string, string> = {};
-      if (transcriptsFormData.fileId)
-        params.fileId = transcriptsFormData.fileId;
-      if (transcriptsFormData.isHighlighted)
-        params.isHighlighted = transcriptsFormData.isHighlighted;
-      if (transcriptsCursorRef.current)
-        params.cursor = transcriptsCursorRef.current;
-      if (transcriptsFormData.limit) params.limit = transcriptsFormData.limit;
+      // Mark request as ongoing
+      ongoingRequestsRef.current.add(requestKey);
 
       try {
+        // Reset cursor for initial load, use stored cursor for load more
+        if (!appendData) {
+          transcriptsCursorRef.current = null;
+        }
+
+        const params: Record<string, string> = {};
+        if (transcriptsFormData.fileId)
+          params.fileId = transcriptsFormData.fileId;
+        if (transcriptsFormData.isHighlighted)
+          params.isHighlighted = transcriptsFormData.isHighlighted;
+        if (transcriptsCursorRef.current)
+          params.cursor = transcriptsCursorRef.current;
+        if (transcriptsFormData.limit) params.limit = transcriptsFormData.limit;
+
         if (
           transcriptsFormData.fileId &&
           transcriptsFormData.fileId.trim() !== ""
@@ -285,6 +304,9 @@ export const useUserDataLoader = ({
       } catch (error) {
         console.error("Error loading transcripts:", error);
         throw error;
+      } finally {
+        // Remove request from ongoing set
+        ongoingRequestsRef.current.delete(requestKey);
       }
     },
     [

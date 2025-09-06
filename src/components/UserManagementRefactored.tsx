@@ -235,7 +235,14 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
             await handleFilterSearch("messages-global", selectedUser.deviceId);
             break;
           case "transcripts":
-            await handleFilterSearch("transcripts", selectedUser.deviceId);
+            // Only load transcripts if we have a fileId and it's not already loaded from file click
+            const currentFileId = transcriptsForm.getValues().fileId;
+            if (currentFileId && currentFileId.trim() !== "") {
+              // Check if we already have transcripts data to avoid duplicate loading
+              if (userData.transcripts.length === 0) {
+                await handleFilterSearch("transcripts", selectedUser.deviceId);
+              }
+            }
             break;
         }
       } catch (error) {
@@ -244,12 +251,18 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
         setUserDetailsLoading(false);
       }
     },
-    [selectedUser, handleFilterSearch]
+    [selectedUser, handleFilterSearch, transcriptsForm, userData.transcripts]
   );
 
   // Auto-fetch transcripts when files are loaded and contain fileIds
+  // Only auto-fetch if no specific file is selected for detail view
   useEffect(() => {
     if (!selectedUser || !userData.files || userData.files.length === 0) {
+      return;
+    }
+
+    // Skip auto-fetch if we're currently viewing file details
+    if (selectedFileForDetail || detailModalVisible) {
       return;
     }
 
@@ -259,13 +272,26 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     );
 
     if (fileWithId && fileWithId.id && typeof fileWithId.id === "string") {
-      // Set fileId to transcripts form
-      transcriptsForm.setValue("fileId", fileWithId.id);
+      // Only set fileId if it's different from current value to avoid unnecessary re-renders
+      const currentFileId = transcriptsForm.getValues().fileId;
+      if (currentFileId !== fileWithId.id) {
+        transcriptsForm.setValue("fileId", fileWithId.id);
 
-      // Auto fetch transcripts with this fileId
-      handleFilterSearch("transcripts", selectedUser.deviceId);
+        // Only auto fetch if we're on the transcripts tab or no tab is active
+        if (activeTab === "transcripts" || !activeTab) {
+          handleFilterSearch("transcripts", selectedUser.deviceId);
+        }
+      }
     }
-  }, [userData.files, selectedUser, transcriptsForm, handleFilterSearch]);
+  }, [
+    userData.files,
+    selectedUser,
+    transcriptsForm,
+    handleFilterSearch,
+    selectedFileForDetail,
+    detailModalVisible,
+    activeTab,
+  ]);
 
   // Load users on component mount
   useEffect(() => {
@@ -435,12 +461,21 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     }
   };
 
-  const handleFileClick = async (file: FileRecord) => {
-    if (!file || !file.id) {
+  const handleFileClick = async (file: any) => {
+    console.log("File clicked:", file);
+
+    if (!file.id || typeof file.id !== "string" || file.id.trim() === "") {
+      console.warn("File ID is missing or invalid:", file);
       return;
     }
 
     if (!selectedUser) return;
+
+    // Prevent multiple clicks while loading
+    if (userDetailsLoading) {
+      console.log("Already loading file details, ignoring click");
+      return;
+    }
 
     // Set file and show modal
     setSelectedFileForDetail(file);
@@ -452,7 +487,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       transcriptsForm.setValue("fileId", file.id);
       messagesForm.setValue("fileId", file.id);
 
-      // Fetch data
+      // Fetch data only for transcripts and messages
+      // The activeTab change will be handled separately to avoid double loading
       await Promise.all([
         handleFilterSearch("transcripts", selectedUser.deviceId),
         handleFilterSearch("messages", selectedUser.deviceId),
@@ -1073,10 +1109,14 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                     title="Transcripts"
                     icon={<AudioOutlined />}
                     data={userData.transcripts}
-                    onRefresh={() =>
-                      selectedUser &&
-                      handleFilterSearch("transcripts", selectedUser.deviceId)
-                    }
+                    onRefresh={() => {
+                      if (!userDetailsLoading && selectedUser) {
+                        handleFilterSearch(
+                          "transcripts",
+                          selectedUser.deviceId
+                        );
+                      }
+                    }}
                     isLoading={userDetailsLoading}
                     cursorPagination={{
                       hasNextPage: paginationData.transcripts.hasNextPage,
@@ -1085,7 +1125,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       onNext: () => {
                         if (
                           paginationData.transcripts.hasNextPage &&
-                          selectedUser
+                          selectedUser &&
+                          !userDetailsLoading
                         ) {
                           loadMoreTranscripts(selectedUser.deviceId);
                         }
@@ -1097,7 +1138,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       setValue={transcriptsForm.setValue}
                       getValues={transcriptsForm.getValues}
                       onSearch={(data) => {
-                        if (selectedUser) {
+                        if (selectedUser && !userDetailsLoading) {
                           // Update form with new data before searching
                           Object.keys(data).forEach((key) => {
                             transcriptsForm.setValue(
@@ -1112,9 +1153,14 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                           );
                         }
                       }}
-                      onReset={() =>
-                        handleFilterReset("transcripts", selectedUser?.deviceId)
-                      }
+                      onReset={() => {
+                        if (!userDetailsLoading) {
+                          handleFilterReset(
+                            "transcripts",
+                            selectedUser?.deviceId
+                          );
+                        }
+                      }}
                       isLoading={userDetailsLoading}
                     />
                   </DataTableSection>
