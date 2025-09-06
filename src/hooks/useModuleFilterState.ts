@@ -1,7 +1,7 @@
-// hooks/useModuleFilterState.ts - User-specific module filter state management
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useForm, FieldValues } from "react-hook-form";
-import { message } from "antd";
 
 // Simple debounce implementation to avoid lodash dependency
 function debounce<T extends (...args: any[]) => any>(
@@ -93,7 +93,7 @@ export function useModuleFilterState<T extends FieldValues>({
     mode: "onChange",
   });
 
-  const { control, handleSubmit, reset, watch, formState } = form;
+  const { handleSubmit, reset, watch, formState } = form;
   const formValues = watch();
   const { isDirty } = formState;
 
@@ -128,15 +128,13 @@ export function useModuleFilterState<T extends FieldValues>({
       setIsLoading(true);
       await handleSubmit(async (data: any) => {
         await onSubmit(data as T);
-        message.success(`${module} filters applied successfully`);
       })();
     } catch (error) {
       console.error("Filter submit failed:", error);
-      message.error(`Failed to apply ${module} filters`);
     } finally {
       setIsLoading(false);
     }
-  }, [handleSubmit, onSubmit, module]);
+  }, [handleSubmit, onSubmit]);
 
   // Reset handler
   const handleReset = useCallback(async () => {
@@ -155,15 +153,12 @@ export function useModuleFilterState<T extends FieldValues>({
       } else {
         await onSubmit(defaultValues);
       }
-
-      message.success(`${module} filters reset to defaults`);
     } catch (error) {
       console.error("Filter reset failed:", error);
-      message.error(`Failed to reset ${module} filters`);
     } finally {
       setIsLoading(false);
     }
-  }, [reset, defaultValues, storageKey, onSubmit, onReset, module]);
+  }, [reset, defaultValues, storageKey, onSubmit, onReset]);
 
   const setLoadingState = useCallback((loading: boolean) => {
     setIsLoading(loading);

@@ -20,23 +20,14 @@ const { Title, Text } = Typography;
 
 export default function DevicePulseApp() {
   // Configuration state
-  const [deviceId, setDeviceId] = useState<string>("");
   const { environment, setEnvironment, isChangingEnvironment } =
     useEnvironment(DEFAULT_ENVIRONMENT);
   const [selectedAppType, setSelectedAppType] =
     useState<string>(DEFAULT_APP_TYPE);
 
   // Hooks
-  const { config, loading: configLoading, error: configError } = useConfig();
-  const {
-    apiResponses,
-    loading,
-    endpointParams,
-    updateEndpointParam,
-    updateQueryParam,
-    handleApiCall,
-    clearResponses,
-  } = useApiCalls();
+  const { loading: configLoading, error: configError } = useConfig();
+  const { apiResponses, clearResponses } = useApiCalls();
 
   // Event handlers
   const handleAppTypeChange = (value: string) => {
@@ -112,12 +103,7 @@ export default function DevicePulseApp() {
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
         {/* User Management - Show when any app is selected */}
         {selectedAppType && environment && (
-          <UserManagement
-            environment={environment}
-            onUserSelect={(user) => {
-              setDeviceId(user.deviceId || "");
-            }}
-          />
+          <UserManagement environment={environment} />
         )}
 
         {/* Welcome Message when no app is selected */}

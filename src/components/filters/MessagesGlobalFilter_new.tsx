@@ -1,7 +1,12 @@
 import React, { useRef } from "react";
 import { Input, Button, Row, Col, Card } from "antd";
 import { SearchOutlined, RollbackOutlined } from "@ant-design/icons";
-import { useWatch, Control, UseFormSetValue, UseFormGetValues } from "react-hook-form";
+import {
+  useWatch,
+  Control,
+  UseFormSetValue,
+  UseFormGetValues,
+} from "react-hook-form";
 import { MessagesGlobalFilterForm } from "../../types/filters";
 
 interface MessagesGlobalFilterProps {
@@ -64,7 +69,14 @@ const MessagesGlobalFilter: React.FC<MessagesGlobalFilterProps> = ({
         {/* Page */}
         <Col xs={24} sm={12} lg={6}>
           <div>
-            <label style={{ fontSize: "12px", color: "#666", marginBottom: 4, display: "block" }}>
+            <label
+              style={{
+                fontSize: "12px",
+                color: "#666",
+                marginBottom: 4,
+                display: "block",
+              }}
+            >
               Page
             </label>
             <Input
@@ -78,7 +90,14 @@ const MessagesGlobalFilter: React.FC<MessagesGlobalFilterProps> = ({
         {/* Limit */}
         <Col xs={24} sm={12} lg={6}>
           <div>
-            <label style={{ fontSize: "12px", color: "#666", marginBottom: 4, display: "block" }}>
+            <label
+              style={{
+                fontSize: "12px",
+                color: "#666",
+                marginBottom: 4,
+                display: "block",
+              }}
+            >
               Limit
             </label>
             <Input

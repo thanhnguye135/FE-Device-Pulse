@@ -1,5 +1,5 @@
-// services/userDataService.ts - Simple user data service without caching
-import { message } from "antd";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { getAxiosInstance } from "./axiosService";
 
 interface PendingRequests {

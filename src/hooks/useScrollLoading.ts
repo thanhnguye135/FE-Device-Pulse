@@ -8,7 +8,7 @@ interface UseScrollLoadingProps {
 }
 
 interface UseScrollLoadingReturn {
-  scrollContainerRef: React.RefObject<HTMLDivElement>;
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   handleScroll: (e: React.UIEvent<HTMLDivElement>) => void;
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
   Table,
@@ -14,7 +14,6 @@ import {
   Col,
   Avatar,
   Tooltip,
-  message,
   Spin,
 } from "antd";
 import {
@@ -35,7 +34,17 @@ interface User {
   createdAt: string;
   updatedAt?: string;
   isAssignedSampleRecording?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
+}
+
+interface UserDetails {
+  id: string;
+  deviceId?: string;
+  status: string;
+  accountAge: string;
+  createdAt: string;
+  updatedAt?: string;
+  isAssignedSampleRecording?: boolean;
 }
 
 interface UserManagementProps {
@@ -52,7 +61,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userDetailsVisible, setUserDetailsVisible] = useState(false);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
-  const [userDetails, setUserDetails] = useState<any>(null);
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState({
     current: 1,
@@ -61,11 +70,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   });
 
   // Load users when component mounts or environment changes
-  useEffect(() => {
-    loadUsers();
-  }, [environment, pagination.current, searchTerm]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     if (!environment) return;
 
     setLoading(true);
@@ -108,15 +113,16 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         ...prev,
         total: result.total || 0,
       }));
-
-      message.success(`Loaded ${result.data?.length || 0} users`);
     } catch (error) {
       console.error("Error loading users:", error);
-      message.error("Failed to load users. Please check your configuration.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [environment, pagination.current, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const loadUserDetails = async (user: User) => {
     setSelectedUser(user);
@@ -143,7 +149,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       }
     } catch (error) {
       console.error("Error loading user details:", error);
-      message.error("Failed to load user details");
     } finally {
       setUserDetailsLoading(false);
     }
@@ -221,7 +226,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: User) => (
+      render: (_: unknown, record: User) => (
         <Space>
           <Tooltip title="View Details">
             <Button

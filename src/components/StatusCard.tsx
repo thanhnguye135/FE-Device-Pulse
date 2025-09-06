@@ -72,7 +72,7 @@ export const StatusCard: React.FC<StatusCardProps> = ({
         size="small"
         items={items.map((item, index) => ({
           title: item.title,
-          status: item.status as any,
+          status: item.status as "wait" | "process" | "finish" | "error",
           icon: item.icon,
           description: (
             <Text

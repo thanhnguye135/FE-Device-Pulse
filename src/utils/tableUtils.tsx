@@ -1,6 +1,7 @@
-// Utils for table and data management
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import React from "react";
-import { Typography, Tag, Tooltip, message } from "antd";
+import { Typography, Tag, Tooltip } from "antd";
 
 const { Text } = Typography;
 
@@ -11,17 +12,13 @@ export const formatDate = (date: string | null | undefined) => {
 };
 
 // Copy handler functions
-export const createCopyHandler = (
-  value: any,
-  successMessage: string = "Copied to clipboard"
-) => {
+export const createCopyHandler = (value: any) => {
   return () => {
     const textValue =
       typeof value === "object"
         ? JSON.stringify(value, null, 2)
         : String(value);
     navigator.clipboard.writeText(textValue);
-    message.success(successMessage);
   };
 };
 
@@ -76,10 +73,7 @@ export const renderCellValue = (value: any) => {
         <Text
           code
           style={{ fontSize: "10px", cursor: "pointer", color: "#1890ff" }}
-          onClick={createCopyHandler(
-            jsonString,
-            "Object data copied to clipboard"
-          )}
+          onClick={createCopyHandler(jsonString)}
         >
           {displayString}...
         </Text>
@@ -93,7 +87,7 @@ export const renderCellValue = (value: any) => {
         <Tooltip title="Click to copy">
           <Text
             style={{ cursor: "pointer", color: "#1890ff" }}
-            onClick={createCopyHandler(value, "Text copied to clipboard")}
+            onClick={createCopyHandler(value)}
           >
             {value.substring(0, 50)}...
           </Text>
@@ -150,7 +144,7 @@ export const renderCellValue = (value: any) => {
   return (
     <Text
       style={{ cursor: "pointer", color: "#1890ff" }}
-      onClick={createCopyHandler(value, "Value copied to clipboard")}
+      onClick={createCopyHandler(value)}
       title="Click to copy"
     >
       {value}
@@ -175,7 +169,7 @@ export const renderUserId = (userid: string, record: any) => {
           }}
           onClick={
             userIdValue !== "Not Set"
-              ? createCopyHandler(userIdValue, "User ID copied to clipboard")
+              ? createCopyHandler(userIdValue)
               : undefined
           }
         >
@@ -201,11 +195,7 @@ export const renderDeviceId = (deviceId: string) => {
             cursor: deviceId ? "pointer" : "default",
             color: deviceId ? "#1890ff" : "#999",
           }}
-          onClick={
-            deviceId
-              ? createCopyHandler(deviceId, "Device ID copied to clipboard")
-              : undefined
-          }
+          onClick={deviceId ? createCopyHandler(deviceId) : undefined}
         >
           {deviceId ? `${deviceId.substring(0, 12)}...` : "Not Set"}
         </Text>

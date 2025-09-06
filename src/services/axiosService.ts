@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import { configService } from "./configService";
 
 // Global axios instances for different environments
@@ -32,10 +32,6 @@ export async function getAxiosInstance(
     // Add request interceptor for logging
     axiosInstances[environment].interceptors.request.use(
       (config) => {
-        console.log(`API Call: ${config.method?.toUpperCase()} ${config.url}`, {
-          params: config.params,
-          data: config.data,
-        });
         return config;
       },
       (error) => Promise.reject(error)
@@ -44,12 +40,6 @@ export async function getAxiosInstance(
     // Add response interceptor for logging and error handling
     axiosInstances[environment].interceptors.response.use(
       (response) => {
-        console.log(
-          `API Response: ${response.config.method?.toUpperCase()} ${
-            response.config.url
-          }`,
-          response.data
-        );
         return response;
       },
       (error) => {
@@ -68,13 +58,11 @@ export async function getAxiosInstance(
 export function invalidateAxiosCache(environment?: string): void {
   if (environment && axiosInstances[environment]) {
     delete axiosInstances[environment];
-    console.log(`Invalidated axios cache for environment: ${environment}`);
   } else {
     // Clear all instances
     Object.keys(axiosInstances).forEach((key) => {
       delete axiosInstances[key];
     });
-    console.log("Invalidated all axios caches");
   }
 }
 

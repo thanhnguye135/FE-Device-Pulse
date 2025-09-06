@@ -1,4 +1,5 @@
-// types/filters.ts - Centralized filter types
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export interface BaseFilterForm {
   page: string;
   limit: string;
@@ -33,7 +34,10 @@ export interface MessagesFilterForm extends BaseFilterForm {
   fileId: string;
 }
 
-export interface MessagesGlobalFilterForm extends BaseFilterForm {}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface MessagesGlobalFilterForm extends BaseFilterForm {
+  // Only needs page and limit from BaseFilterForm, no additional fields
+}
 
 export type FilterType =
   | "files"

@@ -10,16 +10,11 @@ import {
   Modal,
   Descriptions,
   Input,
-  Pagination,
-  Row,
-  Col,
   Avatar,
   Tooltip,
-  message,
   Spin,
   Tabs,
   Badge,
-  Empty,
 } from "antd";
 import {
   UserOutlined,
@@ -28,8 +23,6 @@ import {
   MobileOutlined,
   InfoCircleOutlined,
   RollbackOutlined,
-  MoreOutlined,
-  SearchOutlined,
   FileOutlined,
   FolderOutlined,
   AudioOutlined,
@@ -38,7 +31,7 @@ import {
 
 // Import the extracted components
 import FilesFilter from "./filters/FilesFilter";
-import FoldersFilter from "./filters/FoldersFilter";
+import FoldersFilter from "./filters/FoldersFilter_new";
 import TranscriptsFilter from "./filters/TranscriptsFilter";
 import MessagesFilter from "./filters/MessagesFilter";
 import MessagesGlobalFilter from "./filters/MessagesGlobalFilter";
@@ -64,14 +57,26 @@ interface User {
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string;
+  [key: string]: unknown;
+}
+
+interface UserDetails extends User {
+  // Additional user detail fields can be added here as needed
+  status?: string;
+  accountAge?: string;
+}
+
+interface FileRecord {
+  id?: string;
+  [key: string]: unknown;
 }
 
 interface UserData {
-  files: any[];
-  folders: any[];
-  transcripts: any[];
-  messagesWithNote: any[];
-  messagesGlobal: any[];
+  files: FileRecord[];
+  folders: Record<string, unknown>[];
+  transcripts: Record<string, unknown>[];
+  messagesWithNote: Record<string, unknown>[];
+  messagesGlobal: Record<string, unknown>[];
 }
 
 interface UserManagementProps {
@@ -94,7 +99,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "profile">("list");
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
-  const [userDetails, setUserDetails] = useState<any>(null);
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [userData, setUserData] = useState<UserData>({
     files: [],
     folders: [],
@@ -121,7 +126,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
 
   // Debug pagination data
   console.log("Current paginationData:", paginationData);
-  console.log("Current userData:", userData);
 
   // Device ID change modal
   const [deviceIdChangeVisible, setDeviceIdChangeVisible] = useState(false);
@@ -138,7 +142,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
   });
   const [activeTab, setActiveTab] = useState("files");
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedFileForDetail, setSelectedFileForDetail] = useState<any>(null);
+  const [selectedFileForDetail, setSelectedFileForDetail] =
+    useState<FileRecord | null>(null);
 
   // React Hook Form instances
   const filesForm = useForm<FilesFilterForm>({
@@ -250,21 +255,15 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
 
     // Find first file with an id
     const fileWithId = userData.files.find(
-      (file) => file.id && file.id.trim() !== ""
+      (file) => file.id && typeof file.id === "string" && file.id.trim() !== ""
     );
 
-    if (fileWithId && fileWithId.id) {
+    if (fileWithId && fileWithId.id && typeof fileWithId.id === "string") {
       // Set fileId to transcripts form
       transcriptsForm.setValue("fileId", fileWithId.id);
 
       // Auto fetch transcripts with this fileId
       handleFilterSearch("transcripts", selectedUser.deviceId);
-
-      message.success(
-        `Auto-loaded transcripts for file: ${
-          fileWithId.name || fileWithId.id.substring(0, 8) + "..."
-        }`
-      );
     }
   }, [userData.files, selectedUser, transcriptsForm, handleFilterSearch]);
 
@@ -310,18 +309,15 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
 
         setUsers(users);
         setPagination((prev) => ({ ...prev, total }));
-
-        message.success(`Loaded ${users?.length || 0} users (${total} total)`);
       } catch (error) {
         console.error("Error loading users:", error);
-        message.error("Failed to load users. Please check your configuration.");
       } finally {
         setLoading(false);
       }
     };
 
     loadUsersWrapper();
-  }, [environment, pagination.current, pagination.pageSize, searchQuery]);
+  }, [environment, pagination.current, pagination.pageSize, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load user details when viewing profile
   const loadUserDetails = async (user: User) => {
@@ -340,7 +336,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       messagesGlobalForm.reset();
 
       // Load files first to get fileId for transcripts
-      console.log("Loading files for user:", user.deviceId);
       await handleFilterSearch("files", user.deviceId);
 
       // Load other data in parallel
@@ -355,7 +350,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       }
     } catch (error) {
       console.error("Error loading user details:", error);
-      message.error("Failed to load user details");
 
       // Set empty data on error
       setUserData({
@@ -392,7 +386,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
   // Handle device ID change
   const handleChangeDeviceId = async () => {
     if (!selectedUser || !newDeviceId.trim()) {
-      message.error("Please enter a valid device ID");
       return;
     }
 
@@ -422,7 +415,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       );
 
       if (response.ok) {
-        message.success("Device ID updated successfully");
         setDeviceIdChangeVisible(false);
         setNewDeviceId("");
 
@@ -434,20 +426,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
         // Reload user list
         window.location.reload();
       } else {
-        const errorData = await response.json();
-        message.error(errorData.message || "Failed to update device ID");
+        await response.json(); // Read error data but don't store it
       }
     } catch (error) {
       console.error("Error updating device ID:", error);
-      message.error("Failed to update device ID");
     } finally {
       setChangingDeviceId(false);
     }
   };
 
-  const handleFileClick = async (file: any) => {
+  const handleFileClick = async (file: FileRecord) => {
     if (!file || !file.id) {
-      message.warning("This file does not have an ID to fetch details.");
       return;
     }
 
@@ -470,7 +459,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       ]);
     } catch (error) {
       console.error("Error loading file details:", error);
-      message.error("Failed to load file details.");
     } finally {
       setUserDetailsLoading(false);
     }
@@ -487,7 +475,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
         const handleCopy = () => {
           if (userIdValue && userIdValue !== "Not Set") {
             navigator.clipboard.writeText(userIdValue);
-            message.success("User ID copied to clipboard");
           }
         };
 
@@ -526,7 +513,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       render: (deviceId: string) => {
         const handleCopy = () => {
           navigator.clipboard.writeText(deviceId);
-          message.success("Device ID copied to clipboard");
         };
 
         return (
@@ -629,7 +615,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                   />
                   <span>User Profile Details</span>
                   <Tag color="blue">
-                    {userDetails?.deviceId || "No Device ID"}
+                    {String(userDetails?.deviceId || "No Device ID")}
                   </Tag>
                 </Space>
               }
@@ -657,15 +643,15 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
               >
                 <Descriptions.Item label="User ID">
                   {(() => {
-                    const userIdValue =
+                    const userIdValue = String(
                       userDetails?.userid ||
-                      userDetails?.id ||
-                      userDetails?.userId ||
-                      "Not Set";
+                        userDetails?.id ||
+                        userDetails?.userId ||
+                        "Not Set"
+                    );
                     const handleCopy = () => {
                       if (userIdValue && userIdValue !== "Not Set") {
                         navigator.clipboard.writeText(userIdValue);
-                        message.success("User ID copied to clipboard");
                       }
                     };
                     return (
@@ -695,12 +681,12 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                     <Space>
                       <MobileOutlined style={{ color: "#1890ff" }} />
                       {(() => {
-                        const deviceIdValue =
-                          userDetails?.deviceId || "Not Set";
+                        const deviceIdValue = String(
+                          userDetails?.deviceId || "Not Set"
+                        );
                         const handleCopy = () => {
                           if (deviceIdValue && deviceIdValue !== "Not Set") {
                             navigator.clipboard.writeText(deviceIdValue);
-                            message.success("Device ID copied to clipboard");
                           }
                         };
                         return (
@@ -734,7 +720,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                 <Descriptions.Item label="Created At">
                   <div>
                     <div style={{ fontWeight: 500 }}>
-                      {formatDate(userDetails?.createdAt)}
+                      {formatDate(String(userDetails?.createdAt || ""))}
                     </div>
                   </div>
                 </Descriptions.Item>
@@ -743,7 +729,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                   <div>
                     {userDetails?.updatedAt ? (
                       <div style={{ fontWeight: 500 }}>
-                        {formatDate(userDetails.updatedAt)}
+                        {formatDate(String(userDetails.updatedAt))}
                       </div>
                     ) : (
                       <Text type="secondary">Never updated</Text>
@@ -763,7 +749,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         </Tag>
                         <div>
                           <div style={{ fontSize: "11px", fontWeight: 500 }}>
-                            {formatDate(userDetails.deletedAt)}
+                            {formatDate(String(userDetails.deletedAt))}
                           </div>
                         </div>
                       </div>
@@ -813,8 +799,9 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                           filesForm.setValue("page", page.toString());
                           if (pageSize)
                             filesForm.setValue("limit", pageSize.toString());
-                          selectedUser &&
+                          if (selectedUser) {
                             handleFilterSearch("files", selectedUser.deviceId);
+                          }
                         },
                       }}
                     >
@@ -822,11 +809,21 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         control={filesForm.control}
                         setValue={filesForm.setValue}
                         getValues={filesForm.getValues}
-                        onSearch={(data) =>
-                          selectedUser &&
-                          handleFilterSearch("files", selectedUser.deviceId)
+                        onSearch={(data) => {
+                          if (selectedUser) {
+                            // Update form with new data before searching
+                            Object.keys(data).forEach((key) => {
+                              filesForm.setValue(
+                                key as keyof FilesFilterForm,
+                                data[key as keyof FilesFilterForm]
+                              );
+                            });
+                            handleFilterSearch("files", selectedUser.deviceId);
+                          }
+                        }}
+                        onReset={() =>
+                          handleFilterReset("files", selectedUser?.deviceId)
                         }
-                        onReset={() => handleFilterReset("files")}
                         isLoading={userDetailsLoading}
                       />
                     </DataTableSection>
@@ -861,11 +858,12 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                           foldersForm.setValue("page", page.toString());
                           if (pageSize)
                             foldersForm.setValue("limit", pageSize.toString());
-                          selectedUser &&
+                          if (selectedUser) {
                             handleFilterSearch(
                               "folders",
                               selectedUser.deviceId
                             );
+                          }
                         },
                       }}
                     >
@@ -873,11 +871,24 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         control={foldersForm.control}
                         setValue={foldersForm.setValue}
                         getValues={foldersForm.getValues}
-                        onSearch={(data) =>
-                          selectedUser &&
-                          handleFilterSearch("folders", selectedUser.deviceId)
+                        onSearch={(data) => {
+                          if (selectedUser) {
+                            // Update form with new data before searching
+                            Object.keys(data).forEach((key) => {
+                              foldersForm.setValue(
+                                key as keyof FoldersFilterForm,
+                                data[key as keyof FoldersFilterForm]
+                              );
+                            });
+                            handleFilterSearch(
+                              "folders",
+                              selectedUser.deviceId
+                            );
+                          }
+                        }}
+                        onReset={() =>
+                          handleFilterReset("folders", selectedUser?.deviceId)
                         }
-                        onReset={() => handleFilterReset("folders")}
                         isLoading={userDetailsLoading}
                       />
                     </DataTableSection>
@@ -918,11 +929,12 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                               "limit",
                               pageSize.toString()
                             );
-                          selectedUser &&
+                          if (selectedUser) {
                             handleFilterSearch(
                               "messages-global",
                               selectedUser.deviceId
                             );
+                          }
                         },
                       }}
                     >
@@ -930,14 +942,27 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         control={messagesGlobalForm.control}
                         setValue={messagesGlobalForm.setValue}
                         getValues={messagesGlobalForm.getValues}
-                        onSearch={(data) =>
-                          selectedUser &&
-                          handleFilterSearch(
+                        onSearch={(data) => {
+                          if (selectedUser) {
+                            // Update form with new data before searching
+                            Object.keys(data).forEach((key) => {
+                              messagesGlobalForm.setValue(
+                                key as keyof MessagesGlobalFilterForm,
+                                data[key as keyof MessagesGlobalFilterForm]
+                              );
+                            });
+                            handleFilterSearch(
+                              "messages-global",
+                              selectedUser.deviceId
+                            );
+                          }
+                        }}
+                        onReset={() =>
+                          handleFilterReset(
                             "messages-global",
-                            selectedUser.deviceId
+                            selectedUser?.deviceId
                           )
                         }
-                        onReset={() => handleFilterReset("messages-global")}
                         isLoading={userDetailsLoading}
                       />
                     </DataTableSection>
@@ -1071,11 +1096,25 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       control={transcriptsForm.control}
                       setValue={transcriptsForm.setValue}
                       getValues={transcriptsForm.getValues}
-                      onSearch={() =>
-                        selectedUser &&
-                        handleFilterSearch("transcripts", selectedUser.deviceId)
+                      onSearch={(data) => {
+                        if (selectedUser) {
+                          // Update form with new data before searching
+                          Object.keys(data).forEach((key) => {
+                            transcriptsForm.setValue(
+                              key as keyof TranscriptsFilterForm,
+                              data[key as keyof TranscriptsFilterForm]
+                            );
+                          });
+
+                          handleFilterSearch(
+                            "transcripts",
+                            selectedUser.deviceId
+                          );
+                        }
+                      }}
+                      onReset={() =>
+                        handleFilterReset("transcripts", selectedUser?.deviceId)
                       }
-                      onReset={() => handleFilterReset("transcripts")}
                       isLoading={userDetailsLoading}
                     />
                   </DataTableSection>
@@ -1110,8 +1149,9 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         messagesForm.setValue("page", page.toString());
                         if (pageSize)
                           messagesForm.setValue("limit", pageSize.toString());
-                        selectedUser &&
+                        if (selectedUser) {
                           handleFilterSearch("messages", selectedUser.deviceId);
+                        }
                       },
                     }}
                   >
@@ -1119,11 +1159,22 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       control={messagesForm.control}
                       setValue={messagesForm.setValue}
                       getValues={messagesForm.getValues}
-                      onSearch={() =>
-                        selectedUser &&
-                        handleFilterSearch("messages", selectedUser.deviceId)
+                      onSearch={(data) => {
+                        if (selectedUser) {
+                          // Update form with new data before searching
+                          Object.keys(data).forEach((key) => {
+                            messagesForm.setValue(
+                              key as keyof MessagesFilterForm,
+                              data[key as keyof MessagesFilterForm]
+                            );
+                          });
+
+                          handleFilterSearch("messages", selectedUser.deviceId);
+                        }
+                      }}
+                      onReset={() =>
+                        handleFilterReset("messages", selectedUser?.deviceId)
                       }
-                      onReset={() => handleFilterReset("messages")}
                       isLoading={userDetailsLoading}
                     />
                   </DataTableSection>

@@ -20,18 +20,20 @@ export function FilterField<T extends FieldValues>({
   const { type, placeholder, span, prefix, options, min, max, required } =
     config;
 
-  const renderField = (field: any) => {
-    const commonProps = {
-      ...field,
-      placeholder,
-      allowClear: true,
-      style: { width: "100%" },
-    };
-
+  const renderField = (field: {
+    value: string | number;
+    onChange: (value: string | number) => void;
+  }) => {
     switch (type) {
       case "select":
         return (
-          <Select {...commonProps}>
+          <Select
+            value={field.value}
+            onChange={field.onChange}
+            placeholder={placeholder}
+            allowClear
+            style={{ width: "100%" }}
+          >
             {options?.map((option) => (
               <Option key={option.value} value={option.value}>
                 {option.label}
@@ -43,17 +45,30 @@ export function FilterField<T extends FieldValues>({
       case "number":
         return (
           <Input
-            {...commonProps}
+            value={field.value}
+            onChange={(e) => field.onChange(e.target.value)}
             type="number"
             min={min}
             max={max}
             prefix={prefix}
+            placeholder={placeholder}
+            allowClear
+            style={{ width: "100%" }}
           />
         );
 
       case "input":
       default:
-        return <Input {...commonProps} prefix={prefix} />;
+        return (
+          <Input
+            value={field.value}
+            onChange={(e) => field.onChange(e.target.value)}
+            prefix={prefix}
+            placeholder={placeholder}
+            allowClear
+            style={{ width: "100%" }}
+          />
+        );
     }
   };
 

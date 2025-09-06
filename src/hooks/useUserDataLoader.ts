@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useCallback, useRef } from "react";
-import { message } from "antd";
 import { UseFormReturn } from "react-hook-form";
 import axios from "axios";
 import {
@@ -227,12 +228,6 @@ export const useUserDataLoader = ({
           const transcriptsData = response.data;
 
           // Debug logging to understand API response structure
-          console.log("📊 Transcripts API Response:", {
-            transcriptsData,
-            appendData,
-            currentCursor: transcriptsCursorRef.current,
-            params,
-          });
 
           const newTranscripts = Array.isArray(transcriptsData.data?.data)
             ? transcriptsData.data.data
@@ -263,24 +258,11 @@ export const useUserDataLoader = ({
 
           // For cursor pagination, calculate totalItems based on current loaded data
           setPaginationData((prev) => {
-            const currentTotal = appendData
-              ? prev.transcripts.totalItems || 0
-              : 0;
-
             const newPaginationData = {
-              totalItems: appendData
-                ? currentTotal + newTranscripts.length
-                : newTranscripts.length,
+              totalItems: transcriptsData.data?.totalItems,
               hasNextPage,
               nextCursor,
             };
-
-            console.log("📊 Updating pagination data:", {
-              appendData,
-              previousTotal: prev.transcripts.totalItems,
-              newTranscriptsLength: newTranscripts.length,
-              newPaginationData,
-            });
 
             return {
               ...prev,
@@ -321,6 +303,7 @@ export const useUserDataLoader = ({
       const messagesFormData = messagesForm.getValues();
 
       const params: Record<string, string> = {};
+      if (messagesFormData.fileId) params.fileId = messagesFormData.fileId;
       if (messagesFormData.page) params.page = messagesFormData.page;
       if (messagesFormData.limit) params.limit = messagesFormData.limit;
 
@@ -446,11 +429,9 @@ export const useUserDataLoader = ({
             break;
         }
         if (!appendData) {
-          message.success(`${filterType} data refreshed`);
         }
       } catch (error) {
         console.error(`Error refreshing ${filterType} data:`, error);
-        message.error(`Failed to refresh ${filterType} data`);
       }
     },
     [
@@ -463,23 +444,47 @@ export const useUserDataLoader = ({
   );
 
   const handleFilterReset = useCallback(
-    (
+    async (
       filterType:
         | "files"
         | "folders"
         | "transcripts"
         | "messages"
-        | "messages-global"
+        | "messages-global",
+      deviceId?: string
     ) => {
       switch (filterType) {
         case "files":
           filesForm.reset();
+          // Auto call API with default values if deviceId provided
+          if (deviceId) {
+            try {
+              await loadFilesData(deviceId);
+            } catch (error) {
+              console.error("Error loading files after reset:", error);
+            }
+          }
           break;
         case "folders":
           foldersForm.reset();
+          // Auto call API with default values if deviceId provided
+          if (deviceId) {
+            try {
+              await loadFoldersData(deviceId);
+            } catch (error) {
+              console.error("Error loading folders after reset:", error);
+            }
+          }
           break;
         case "transcripts":
-          transcriptsForm.reset();
+          // Preserve fileId but reset other values
+          const currentFileId = transcriptsForm.getValues().fileId;
+          transcriptsForm.reset({
+            fileId: currentFileId, // Preserve current fileId
+            isHighlighted: "",
+            cursor: "",
+            limit: "10",
+          });
           // Reset cursor and clear transcripts data when resetting
           transcriptsCursorRef.current = null;
           setUserData((prev) => ({ ...prev, transcripts: [] }));
@@ -491,15 +496,53 @@ export const useUserDataLoader = ({
               nextCursor: null,
             },
           }));
+          // Auto call API with default values if deviceId provided
+          // For transcripts, we need fileId, so only call if fileId exists after reset
+          if (deviceId) {
+            try {
+              // Wait a bit for form reset to complete
+              setTimeout(async () => {
+                if (currentFileId && currentFileId.trim() !== "") {
+                  await loadTranscriptsData(deviceId);
+                }
+              }, 50);
+            } catch (error) {
+              console.error("Error loading transcripts after reset:", error);
+            }
+          }
           break;
         case "messages":
-          messagesForm.reset();
+          // Preserve fileId but reset other values (even though API doesn't use fileId)
+          const currentMessagesFileId = messagesForm.getValues().fileId;
+          messagesForm.reset({
+            page: "1",
+            limit: "10",
+            fileId: currentMessagesFileId, // Preserve current fileId for UI consistency
+          });
+          // Auto call API with default values if deviceId provided
+          if (deviceId) {
+            try {
+              await loadMessagesData(deviceId);
+            } catch (error) {
+              console.error("Error loading messages after reset:", error);
+            }
+          }
           break;
         case "messages-global":
           messagesGlobalForm.reset();
+          // Auto call API with default values if deviceId provided
+          if (deviceId) {
+            try {
+              await loadMessagesGlobalData(deviceId);
+            } catch (error) {
+              console.error(
+                "Error loading messages global after reset:",
+                error
+              );
+            }
+          }
           break;
       }
-      message.success(`${filterType} filters reset to default`);
     },
     [
       filesForm,
@@ -509,6 +552,11 @@ export const useUserDataLoader = ({
       messagesGlobalForm,
       setUserData,
       setPaginationData,
+      loadFilesData,
+      loadFoldersData,
+      loadTranscriptsData,
+      loadMessagesData,
+      loadMessagesGlobalData,
     ]
   );
 

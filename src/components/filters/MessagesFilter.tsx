@@ -1,17 +1,18 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useRef } from "react";
 import { Input, Button, Row, Col, Card } from "antd";
+import { SearchOutlined, RollbackOutlined } from "@ant-design/icons";
 import {
-  SearchOutlined,
-  RollbackOutlined,
-  FileOutlined,
-} from "@ant-design/icons";
-import { useWatch } from "react-hook-form";
+  useWatch,
+  Control,
+  UseFormSetValue,
+  UseFormGetValues,
+} from "react-hook-form";
 import { MessagesFilterForm } from "../../types/filters";
 
 interface MessagesFilterProps {
-  control: any;
-  setValue: any;
-  getValues: any;
+  control: Control<MessagesFilterForm>;
+  setValue: UseFormSetValue<MessagesFilterForm>;
+  getValues: UseFormGetValues<MessagesFilterForm>;
   onSearch: (data: MessagesFilterForm) => void;
   onReset: () => void;
   isLoading?: boolean;
@@ -26,15 +27,7 @@ const MessagesFilter: React.FC<MessagesFilterProps> = ({
   isLoading,
 }) => {
   const watchedValues = useWatch({ control });
-  const [isInitialized, setIsInitialized] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitialized(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
 
   // Disabled auto-search - only search when clicking Find button
   // useEffect(() => {
@@ -70,6 +63,7 @@ const MessagesFilter: React.FC<MessagesFilterProps> = ({
 
   const handleManualSearch = () => {
     const values = getValues();
+
     onSearch(values);
   };
 

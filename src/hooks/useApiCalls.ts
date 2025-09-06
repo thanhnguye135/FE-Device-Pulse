@@ -7,7 +7,6 @@ import {
 } from "../types/api";
 import { apiService } from "../services/apiService";
 import { getQueryParamsByEndpoint } from "../utils/appHelpers";
-import { message } from "antd";
 
 export const useApiCalls = () => {
   const [apiResponses, setApiResponses] = useState<Record<string, ApiResponse>>(
@@ -60,11 +59,6 @@ export const useApiCalls = () => {
         currentParams
       );
       if (!validation.isValid) {
-        message.warning(
-          `Please fill in required parameters: ${validation.missingParams.join(
-            ", "
-          )}`
-        );
         return;
       }
 
@@ -103,12 +97,7 @@ export const useApiCalls = () => {
           ...prev,
           [endpointName]: response,
         }));
-
-        message.success("API call successful!");
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "API call failed";
-        message.error(errorMessage);
         console.error("API call error:", error);
       } finally {
         setLoading((prev) => ({ ...prev, [loadingKey]: false }));

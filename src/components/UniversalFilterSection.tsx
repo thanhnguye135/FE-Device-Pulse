@@ -1,21 +1,16 @@
 // components/UniversalFilterSection.tsx - Scalable filter component
 import React from "react";
-import { FieldValues, Path } from "react-hook-form";
 import { Card, Space, Typography, Button, Row } from "antd";
-import {
-  FilterOutlined,
-  SearchOutlined,
-  RollbackOutlined,
-} from "@ant-design/icons";
+import { SearchOutlined, RollbackOutlined } from "@ant-design/icons";
 import { useFilterForm } from "../hooks/useFilterForm";
 import { FilterField } from "./FilterField";
-import { FilterSectionConfig } from "../types/filters";
+import { FilterSectionConfig, FilterFieldConfig } from "../types/filters";
 
 const { Text } = Typography;
 
 interface UniversalFilterSectionProps {
   config: FilterSectionConfig;
-  onFilterChange: (data: any) => void | Promise<void>; // Made generic to accept any filter form type
+  onFilterChange: (data: Record<string, unknown>) => void | Promise<void>;
   isLoading?: boolean;
   enableAutoSubmit?: boolean;
   showDebug?: boolean;
@@ -84,9 +79,9 @@ export const UniversalFilterSection: React.FC<UniversalFilterSectionProps> = ({
       </Space>
 
       {/* Dynamic Fields */}
-      <form onSubmit={form.handleSubmit(onFilterChange as any)}>
+      <form onSubmit={form.handleSubmit(onFilterChange)}>
         <Row gutter={[8, 8]}>
-          {config.fields.map((fieldConfig: any) => (
+          {config.fields.map((fieldConfig: FilterFieldConfig) => (
             <FilterField
               key={fieldConfig.name}
               config={fieldConfig}

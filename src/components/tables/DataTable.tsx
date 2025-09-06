@@ -6,7 +6,7 @@ import { generateDynamicColumns } from "../../utils/tableUtils";
 const { Text } = Typography;
 
 interface DataTableProps {
-  data: any[];
+  data: Record<string, unknown>[];
   title: string;
   icon: React.ReactNode;
   loading?: boolean;
@@ -54,7 +54,9 @@ export const DataTable: React.FC<DataTableProps> = ({
           }}
           size="small"
           scroll={{ x: "max-content", y: 400 }}
-          rowKey={(record, index) => record.id || record.userid || index}
+          rowKey={(record, index) =>
+            String(record.id || record.userid || index || Math.random())
+          }
           bordered
           loading={loading}
           className="enhanced-data-table"

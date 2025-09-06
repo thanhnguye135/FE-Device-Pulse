@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { ApiEndpoint, ApiResponse, QueryParam } from "../types/api";
 import { getAxiosInstance } from "./axiosService";
 

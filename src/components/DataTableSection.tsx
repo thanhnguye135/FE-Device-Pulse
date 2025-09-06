@@ -8,7 +8,6 @@ import {
   Tag,
   Empty,
   Tooltip,
-  message,
   Spin,
 } from "antd";
 import { ReloadOutlined, LoadingOutlined } from "@ant-design/icons";
@@ -16,14 +15,20 @@ import { useScrollLoading } from "../hooks/useScrollLoading";
 
 const { Text } = Typography;
 
+interface DataTableRecord {
+  [key: string]: unknown;
+  id?: string;
+  userid?: string;
+}
+
 interface DataTableSectionProps {
   title: string;
   icon: React.ReactNode;
-  data: any[];
+  data: DataTableRecord[];
   onRefresh?: () => void;
   isLoading?: boolean;
   children?: React.ReactNode; // For filter components
-  onRowClick?: (record: any) => void;
+  onRowClick?: (record: DataTableRecord) => void;
   pagination?: {
     current: number;
     pageSize: number;
@@ -59,7 +64,7 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
     threshold: 150, // Load when 150px from bottom
   });
   // Generate dynamic columns from data
-  const generateDynamicColumns = (data: any[]) => {
+  const generateDynamicColumns = (data: DataTableRecord[]) => {
     if (!data || !Array.isArray(data) || data.length === 0) return [];
 
     const allKeys = new Set<string>();
@@ -83,7 +88,7 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
         key,
         ellipsis: isIdColumn ? false : { showTitle: false },
         width: width,
-        render: (value: any, record: any) => {
+        render: (value: unknown) => {
           if (value === null || value === undefined) {
             return <Text type="secondary">N/A</Text>;
           }
@@ -102,7 +107,6 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
             if (isIdColumn) {
               const handleCopy = () => {
                 navigator.clipboard.writeText(value);
-                message.success("ID copied to clipboard");
               };
               return (
                 <Tooltip title="Click to copy">
@@ -127,7 +131,6 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
             if (value.length > 50) {
               const handleCopy = () => {
                 navigator.clipboard.writeText(value);
-                message.success("Value copied to clipboard");
               };
 
               return (
@@ -151,7 +154,6 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
             const stringValue = JSON.stringify(value);
             const handleCopy = () => {
               navigator.clipboard.writeText(stringValue);
-              message.success("Value copied to clipboard");
             };
 
             return (
@@ -174,7 +176,6 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
           // For numbers and short strings, add copy on click as well
           const handleCopy = () => {
             navigator.clipboard.writeText(String(value));
-            message.success("Value copied to clipboard");
           };
 
           return (
@@ -270,7 +271,7 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
                 x: "max-content",
                 y: cursorPagination ? undefined : 400, // Let scroll container handle height for cursor pagination
               }}
-              rowKey={(record) =>
+              rowKey={(record: DataTableRecord) =>
                 record.id ||
                 record.userid ||
                 `row-${Math.random().toString(36).substr(2, 9)}`
@@ -282,7 +283,7 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
               }}
               onRow={
                 onRowClick
-                  ? (record) => ({
+                  ? (record: DataTableRecord) => ({
                       onClick: () => onRowClick(record),
                       style: { cursor: "pointer" },
                     })

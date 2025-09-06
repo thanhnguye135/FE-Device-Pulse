@@ -27,10 +27,6 @@ export const useEnvironment = (
         // Update state
         setEnvironmentState(newEnvironment);
 
-        console.log(
-          `Environment changed from ${environment} to ${newEnvironment}`
-        );
-
         // Store in localStorage for persistence
         if (typeof window !== "undefined") {
           localStorage.setItem("selected-environment", newEnvironment);

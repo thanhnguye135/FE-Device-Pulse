@@ -1,7 +1,7 @@
-// hooks/useFilterForm.ts - Reusable filter form hook
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useForm, useWatch, UseFormReturn, FieldValues } from "react-hook-form";
 import { useEffect, useCallback, useMemo } from "react";
-import { message } from "antd";
 
 interface UseFilterFormOptions<T extends FieldValues> {
   defaultValues: T;
@@ -52,7 +52,6 @@ export function useFilterForm<T extends FieldValues>({
         await onSubmit(watchedValues);
       } catch (error) {
         console.error("Auto-submit failed:", error);
-        message.error("Failed to apply filters automatically");
       }
     }, debounceMs);
 
@@ -64,18 +63,15 @@ export function useFilterForm<T extends FieldValues>({
     try {
       await handleSubmit(async (data) => {
         await onSubmit(data as T);
-        message.success("Filters applied successfully");
       })();
     } catch (error) {
       console.error("Manual submit failed:", error);
-      message.error("Failed to apply filters");
     }
   }, [handleSubmit, onSubmit]);
 
   // Reset handler
   const handleReset = useCallback(() => {
     reset();
-    message.success("Filters reset to default");
   }, [reset]);
 
   return {

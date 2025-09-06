@@ -1,6 +1,6 @@
 // UserTable - Standalone table component for users
 import React from "react";
-import { Table, Button, Space, Avatar, Typography, Tag } from "antd";
+import { Table, Button, Space, Tag } from "antd";
 import {
   UserOutlined,
   EyeOutlined,
@@ -13,8 +13,6 @@ import {
   formatDate,
 } from "../../utils/tableUtils";
 
-const { Text } = Typography;
-
 export interface User {
   id?: string;
   userid?: string;
@@ -22,7 +20,7 @@ export interface User {
   createdAt: string;
   updatedAt?: string;
   deletedAt?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface UserTableProps {
@@ -121,7 +119,7 @@ export const UserTable: React.FC<UserTableProps> = ({
         { text: "Active", value: "active" },
         { text: "Deleted", value: "deleted" },
       ],
-      onFilter: (value: any, record: User) => {
+      onFilter: (value: boolean | React.Key, record: User) => {
         if (value === "active") return !record.deletedAt;
         if (value === "deleted") return !!record.deletedAt;
         return true;
@@ -130,7 +128,7 @@ export const UserTable: React.FC<UserTableProps> = ({
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: User) => (
+      render: (_: unknown, record: User) => (
         <Space direction="vertical" size={4}>
           <Button
             type="primary"

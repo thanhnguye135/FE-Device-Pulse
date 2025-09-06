@@ -1,17 +1,18 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useRef } from "react";
 import { Input, Button, Row, Col, Card } from "antd";
+import { SearchOutlined, RollbackOutlined } from "@ant-design/icons";
 import {
-  SearchOutlined,
-  RollbackOutlined,
-  FileOutlined,
-} from "@ant-design/icons";
-import { useWatch } from "react-hook-form";
+  useWatch,
+  Control,
+  UseFormSetValue,
+  UseFormGetValues,
+} from "react-hook-form";
 import { TranscriptsFilterForm } from "../../types/filters";
 
 interface TranscriptsFilterProps {
-  control: any;
-  setValue: any;
-  getValues: any;
+  control: Control<TranscriptsFilterForm>;
+  setValue: UseFormSetValue<TranscriptsFilterForm>;
+  getValues: UseFormGetValues<TranscriptsFilterForm>;
   onSearch: (data: TranscriptsFilterForm) => void;
   onReset: () => void;
   isLoading?: boolean;
@@ -26,49 +27,11 @@ const TranscriptsFilter: React.FC<TranscriptsFilterProps> = ({
   isLoading,
 }) => {
   const watchedValues = useWatch({ control });
-  const [isInitialized, setIsInitialized] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitialized(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Disabled auto-search - only search when clicking Find button
-  // useEffect(() => {
-  //   if (!isInitialized || !watchedValues) {
-  //     return;
-  //   }
-
-  //   if (timeoutRef.current) {
-  //     clearTimeout(timeoutRef.current);
-  //   }
-
-  //   const hasRealFilters = Object.entries(watchedValues).some(
-  //     ([key, value]) => {
-  //       if (!value || value === "") return false;
-  //       if (key === "limit" && (value === "10" || value === 10)) return false;
-  //       return true;
-  //     }
-  //   );
-
-  //   if (hasRealFilters) {
-  //     timeoutRef.current = setTimeout(() => {
-  //       onSearch(watchedValues as TranscriptsFilterForm);
-  //     }, 500);
-  //   }
-
-  //   return () => {
-  //     if (timeoutRef.current) {
-  //       clearTimeout(timeoutRef.current);
-  //     }
-  //   };
-  // }, [watchedValues, isInitialized, onSearch]);
 
   const handleManualSearch = () => {
     const values = getValues();
+
     onSearch(values);
   };
 
@@ -85,7 +48,7 @@ const TranscriptsFilter: React.FC<TranscriptsFilterProps> = ({
         {/* Column 1: Filter Fields */}
         <Col xs={24} sm={24} md={18} lg={20} xl={20}>
           <Row gutter={[8, 8]} align="middle">
-            <Col xs={12} sm={12} md={8} lg={8}>
+            <Col xs={12} sm={6} md={4} lg={4}>
               <Input
                 placeholder="Filter by highlights (true/false)"
                 size="small"
@@ -94,7 +57,7 @@ const TranscriptsFilter: React.FC<TranscriptsFilterProps> = ({
                 allowClear
               />
             </Col>
-            <Col xs={12} sm={12} md={8} lg={8}>
+            <Col xs={12} sm={6} md={4} lg={4}>
               <Input
                 placeholder="Limit"
                 size="small"

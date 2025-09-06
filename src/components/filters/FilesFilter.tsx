@@ -1,13 +1,18 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useRef } from "react";
 import { Input, Button, Row, Col, Card } from "antd";
 import { SearchOutlined, RollbackOutlined } from "@ant-design/icons";
-import { useWatch } from "react-hook-form";
+import {
+  useWatch,
+  Control,
+  UseFormSetValue,
+  UseFormGetValues,
+} from "react-hook-form";
 import { FilesFilterForm } from "../../types/filters";
 
 interface FilesFilterProps {
-  control: any;
-  setValue: any;
-  getValues: any;
+  control: Control<FilesFilterForm>;
+  setValue: UseFormSetValue<FilesFilterForm>;
+  getValues: UseFormGetValues<FilesFilterForm>;
   onSearch: (data: FilesFilterForm) => void;
   onReset: () => void;
   isLoading?: boolean;
@@ -22,16 +27,7 @@ const FilesFilter: React.FC<FilesFilterProps> = ({
   isLoading,
 }) => {
   const watchedValues = useWatch({ control });
-  const [isInitialized, setIsInitialized] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Initialize component
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitialized(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
 
   // Debounced search effect
   // Disabled auto-search - only search when clicking Find button

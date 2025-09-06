@@ -1,6 +1,5 @@
 // hooks/useApiService.ts - Centralized API service hook
 import { useCallback, useState } from "react";
-import { message } from "antd";
 import { getAxiosInstance } from "../services/axiosService";
 
 interface ApiServiceConfig {
@@ -8,7 +7,7 @@ interface ApiServiceConfig {
   deviceId?: string;
 }
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   data?: T;
   items?: T[];
   totalItems?: number;
@@ -20,29 +19,22 @@ export function useApiService({ environment, deviceId }: ApiServiceConfig) {
 
   // BaseURL will be handled by axios instance based on environment
 
-  const getHeaders = (includeDeviceId = true) => ({
-    "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
-    ...(includeDeviceId && deviceId && { "x-device-id": deviceId }),
-    "Content-Type": "application/json",
-  });
-
-  const buildQueryParams = (params: Record<string, any>) => {
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
-        searchParams.append(key, String(value));
-      }
-    });
-    return searchParams.toString();
-  };
+  const getHeaders = useCallback(
+    (includeDeviceId = true) => ({
+      "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+      ...(includeDeviceId && deviceId && { "x-device-id": deviceId }),
+      "Content-Type": "application/json",
+    }),
+    [deviceId]
+  );
 
   const apiCall = useCallback(
-    async <T = any>(
+    async <T = unknown>(
       endpoint: string,
-      params: Record<string, any> = {},
+      params: Record<string, unknown> = {},
       options: {
         method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-        body?: any;
+        body?: unknown;
         includeDeviceId?: boolean;
         loadingKey?: string;
       } = {}
@@ -59,7 +51,13 @@ export function useApiService({ environment, deviceId }: ApiServiceConfig) {
 
         const axiosInstance = await getAxiosInstance(environment);
 
-        const requestConfig: any = {
+        const requestConfig: {
+          url: string;
+          method: string;
+          headers: Record<string, string>;
+          params?: Record<string, unknown>;
+          data?: unknown;
+        } = {
           url: endpoint,
           method: method.toLowerCase(),
           headers: getHeaders(includeDeviceId),
@@ -71,41 +69,37 @@ export function useApiService({ environment, deviceId }: ApiServiceConfig) {
           requestConfig.data = body || params;
         }
 
-        console.log(`API Call: ${method} ${endpoint}`, { params, body });
-
         const response = await axiosInstance.request(requestConfig);
         const result = response.data;
-        console.log(`API Response: ${method} ${endpoint}`, result);
 
         return result;
       } catch (error) {
         console.error(`API Error: ${method} ${endpoint}`, error);
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
-        message.error(`API call failed: ${errorMessage}`);
         return { error: errorMessage };
       } finally {
         setLoading((prev) => ({ ...prev, [loadingKey]: false }));
       }
     },
-    [environment, deviceId]
+    [environment, getHeaders]
   );
 
   // Specialized methods for different data types
   const loadFiles = useCallback(
-    (params: any) =>
+    (params: Record<string, unknown>) =>
       apiCall("/api/v1/admin/files", params, { loadingKey: "files" }),
     [apiCall]
   );
 
   const loadFolders = useCallback(
-    (params: any) =>
+    (params: Record<string, unknown>) =>
       apiCall("/api/v1/admin/folders", params, { loadingKey: "folders" }),
     [apiCall]
   );
 
   const loadTranscripts = useCallback(
-    (params: any) =>
+    (params: Record<string, unknown>) =>
       apiCall("/api/v1/admin/transcripts", params, {
         loadingKey: "transcripts",
       }),
@@ -113,7 +107,7 @@ export function useApiService({ environment, deviceId }: ApiServiceConfig) {
   );
 
   const loadMessages = useCallback(
-    (params: any) =>
+    (params: Record<string, unknown>) =>
       apiCall("/api/v1/admin/messages/chat-with-note", params, {
         loadingKey: "messages",
       }),
@@ -121,7 +115,7 @@ export function useApiService({ environment, deviceId }: ApiServiceConfig) {
   );
 
   const loadMessagesGlobal = useCallback(
-    (params: any) =>
+    (params: Record<string, unknown>) =>
       apiCall("/api/v1/admin/messages/chat-global", params, {
         loadingKey: "messages-global",
       }),
@@ -129,7 +123,7 @@ export function useApiService({ environment, deviceId }: ApiServiceConfig) {
   );
 
   const loadUsers = useCallback(
-    (params: any) =>
+    (params: Record<string, unknown>) =>
       apiCall("/api/v1/admin/users/device-ids", params, {
         loadingKey: "users",
         includeDeviceId: false,

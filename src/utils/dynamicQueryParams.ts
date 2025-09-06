@@ -1,4 +1,4 @@
-// utils/dynamicQueryParams.ts - Dynamic query parameter utilities for flexible API calls
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface DynamicQueryParam {
   [key: string]: string | number | boolean | undefined | null;
 }
