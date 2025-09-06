@@ -74,9 +74,13 @@ export const useUserDataLoader = ({
   setPaginationData,
 }: UseUserDataLoaderProps) => {
   const getBaseUrl = useCallback(() => {
-    return environment === "production"
-      ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
-      : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
+    if (environment === "production") {
+      return process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL;
+    } else if (environment === "development") {
+      return process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
+    } else {
+      return process.env.NEXT_PUBLIC_LOCAL_BE_NOTICA_URL;
+    }
   }, [environment]);
 
   const getAxiosConfig = useCallback(
@@ -247,7 +251,11 @@ export const useUserDataLoader = ({
           setUserData((prev) => ({ ...prev, transcripts: [] }));
           setPaginationData((prev) => ({
             ...prev,
-            transcripts: { totalItems: 0, hasNextPage: false, nextCursor: null },
+            transcripts: {
+              totalItems: 0,
+              hasNextPage: false,
+              nextCursor: null,
+            },
           }));
         }
       } catch (error) {
@@ -434,7 +442,11 @@ export const useUserDataLoader = ({
           setUserData((prev) => ({ ...prev, transcripts: [] }));
           setPaginationData((prev) => ({
             ...prev,
-            transcripts: { totalItems: 0, hasNextPage: false, nextCursor: null },
+            transcripts: {
+              totalItems: 0,
+              hasNextPage: false,
+              nextCursor: null,
+            },
           }));
           break;
         case "messages":
@@ -446,7 +458,15 @@ export const useUserDataLoader = ({
       }
       message.success(`${filterType} filters reset to default`);
     },
-    [filesForm, foldersForm, transcriptsForm, messagesForm, messagesGlobalForm, setUserData, setPaginationData]
+    [
+      filesForm,
+      foldersForm,
+      transcriptsForm,
+      messagesForm,
+      messagesGlobalForm,
+      setUserData,
+      setPaginationData,
+    ]
   );
 
   const loadMoreTranscripts = useCallback(

@@ -1,6 +1,7 @@
 // hooks/useApiService.ts - Centralized API service hook
 import { useCallback, useState } from "react";
 import { message } from "antd";
+import { getAxiosInstance } from "../services/axiosService";
 
 interface ApiServiceConfig {
   environment: string;
@@ -17,10 +18,7 @@ interface ApiResponse<T = any> {
 export function useApiService({ environment, deviceId }: ApiServiceConfig) {
   const [loading, setLoading] = useState<Record<string, boolean>>({});
 
-  const baseUrl =
-    environment === "production"
-      ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
-      : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
+  // BaseURL will be handled by axios instance based on environment
 
   const getHeaders = (includeDeviceId = true) => ({
     "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
@@ -59,25 +57,25 @@ export function useApiService({ environment, deviceId }: ApiServiceConfig) {
       try {
         setLoading((prev) => ({ ...prev, [loadingKey]: true }));
 
-        const queryString = method === "GET" ? buildQueryParams(params) : "";
-        const url = `${baseUrl}${endpoint}${
-          queryString ? `?${queryString}` : ""
-        }`;
+        const axiosInstance = await getAxiosInstance(environment);
 
-        console.log(`API Call: ${method} ${url}`, { params, body });
-
-        const response = await fetch(url, {
-          method,
+        const requestConfig: any = {
+          url: endpoint,
+          method: method.toLowerCase(),
           headers: getHeaders(includeDeviceId),
-          ...(body && { body: JSON.stringify(body) }),
-        });
+        };
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (method === "GET") {
+          requestConfig.params = params;
+        } else {
+          requestConfig.data = body || params;
         }
 
-        const result = await response.json();
-        console.log(`API Response: ${method} ${url}`, result);
+        console.log(`API Call: ${method} ${endpoint}`, { params, body });
+
+        const response = await axiosInstance.request(requestConfig);
+        const result = response.data;
+        console.log(`API Response: ${method} ${endpoint}`, result);
 
         return result;
       } catch (error) {
@@ -90,7 +88,7 @@ export function useApiService({ environment, deviceId }: ApiServiceConfig) {
         setLoading((prev) => ({ ...prev, [loadingKey]: false }));
       }
     },
-    [baseUrl, deviceId]
+    [environment, deviceId]
   );
 
   // Specialized methods for different data types

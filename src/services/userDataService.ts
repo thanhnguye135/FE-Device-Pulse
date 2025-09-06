@@ -1,5 +1,6 @@
 // services/userDataService.ts - Simple user data service without caching
 import { message } from "antd";
+import { getAxiosInstance } from "./axiosService";
 
 interface PendingRequests {
   [key: string]: Promise<any>;
@@ -9,7 +10,9 @@ class UserDataService {
   private pendingRequests: PendingRequests = {};
 
   private async makeRequest(
-    url: string,
+    environment: string,
+    endpoint: string,
+    params: URLSearchParams,
     headers: Record<string, string>,
     requestKey: string
   ): Promise<any> {
@@ -19,17 +22,17 @@ class UserDataService {
     }
 
     // Create and store the promise
-    const requestPromise = fetch(url, { headers })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-      })
-      .finally(() => {
-        // Clean up pending request
-        delete this.pendingRequests[requestKey];
+    const requestPromise = (async () => {
+      const axiosInstance = await getAxiosInstance(environment);
+      const response = await axiosInstance.get(endpoint, {
+        params: Object.fromEntries(params.entries()),
+        headers,
       });
+      return response.data;
+    })().finally(() => {
+      // Clean up pending request
+      delete this.pendingRequests[requestKey];
+    });
 
     this.pendingRequests[requestKey] = requestPromise;
     return requestPromise;
@@ -51,14 +54,7 @@ class UserDataService {
     const requestKey = `${userId}_${dataType}_${JSON.stringify(filters)}`;
 
     try {
-      const baseUrl =
-        environment === "production"
-          ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
-          : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
-
-      if (!baseUrl) {
-        throw new Error("API base URL not configured");
-      }
+      // BaseURL will be handled by axios instance
 
       const headers = {
         "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
@@ -70,11 +66,16 @@ class UserDataService {
 
       switch (dataType) {
         case "files":
-          result = await this.loadFiles(baseUrl, headers, filters, requestKey);
+          result = await this.loadFiles(
+            environment,
+            headers,
+            filters,
+            requestKey
+          );
           break;
         case "folders":
           result = await this.loadFolders(
-            baseUrl,
+            environment,
             headers,
             filters,
             requestKey
@@ -82,7 +83,7 @@ class UserDataService {
           break;
         case "transcripts":
           result = await this.loadTranscripts(
-            baseUrl,
+            environment,
             headers,
             filters,
             requestKey
@@ -90,7 +91,7 @@ class UserDataService {
           break;
         case "messages":
           result = await this.loadMessages(
-            baseUrl,
+            environment,
             headers,
             filters,
             requestKey
@@ -98,14 +99,19 @@ class UserDataService {
           break;
         case "messages-global":
           result = await this.loadMessagesGlobal(
-            baseUrl,
+            environment,
             headers,
             filters,
             requestKey
           );
           break;
         case "all":
-          result = await this.loadAllData(baseUrl, headers, userId, requestKey);
+          result = await this.loadAllData(
+            environment,
+            headers,
+            userId,
+            requestKey
+          );
           break;
         default:
           throw new Error(`Unknown data type: ${dataType}`);
@@ -119,7 +125,7 @@ class UserDataService {
   }
 
   private async loadFiles(
-    baseUrl: string,
+    environment: string,
     headers: Record<string, string>,
     filters: any,
     requestKey: string
@@ -135,13 +141,18 @@ class UserDataService {
     if (filters?.page) params.append("page", filters.page);
     if (filters?.limit) params.append("limit", filters.limit);
 
-    const url = `${baseUrl}/api/v1/admin/files?${params}`;
-    const response = await this.makeRequest(url, headers, requestKey);
+    const response = await this.makeRequest(
+      environment,
+      "/api/v1/admin/files",
+      params,
+      headers,
+      requestKey
+    );
     return response.data?.items || response.data || [];
   }
 
   private async loadFolders(
-    baseUrl: string,
+    environment: string,
     headers: Record<string, string>,
     filters: any,
     requestKey: string
@@ -155,13 +166,18 @@ class UserDataService {
     if (filters?.page) params.append("page", filters.page);
     if (filters?.limit) params.append("limit", filters.limit);
 
-    const url = `${baseUrl}/api/v1/admin/folders?${params}`;
-    const response = await this.makeRequest(url, headers, requestKey);
+    const response = await this.makeRequest(
+      environment,
+      "/api/v1/admin/folders",
+      params,
+      headers,
+      requestKey
+    );
     return response.data?.items || response.data || [];
   }
 
   private async loadTranscripts(
-    baseUrl: string,
+    environment: string,
     headers: Record<string, string>,
     filters: any,
     requestKey: string
@@ -174,13 +190,18 @@ class UserDataService {
     if (filters?.cursor) params.append("cursor", filters.cursor);
     if (filters?.limit) params.append("limit", filters.limit);
 
-    const url = `${baseUrl}/api/v1/admin/transcripts?${params}`;
-    const response = await this.makeRequest(url, headers, requestKey);
+    const response = await this.makeRequest(
+      environment,
+      "/api/v1/admin/transcripts",
+      params,
+      headers,
+      requestKey
+    );
     return response.data?.items || response.data || [];
   }
 
   private async loadMessages(
-    baseUrl: string,
+    environment: string,
     headers: Record<string, string>,
     filters: any,
     requestKey: string
@@ -190,13 +211,18 @@ class UserDataService {
     if (filters?.page) params.append("page", filters.page);
     if (filters?.limit) params.append("limit", filters.limit);
 
-    const url = `${baseUrl}/api/v1/admin/messages/chat-with-note?${params}`;
-    const response = await this.makeRequest(url, headers, requestKey);
+    const response = await this.makeRequest(
+      environment,
+      "/api/v1/admin/messages/chat-with-note",
+      params,
+      headers,
+      requestKey
+    );
     return response.data?.items || response.data || [];
   }
 
   private async loadMessagesGlobal(
-    baseUrl: string,
+    environment: string,
     headers: Record<string, string>,
     filters: any,
     requestKey: string
@@ -205,13 +231,18 @@ class UserDataService {
     if (filters?.page) params.append("page", filters.page);
     if (filters?.limit) params.append("limit", filters.limit);
 
-    const url = `${baseUrl}/api/v1/admin/messages/chat-global?${params}`;
-    const response = await this.makeRequest(url, headers, requestKey);
+    const response = await this.makeRequest(
+      environment,
+      "/api/v1/admin/messages/chat-global",
+      params,
+      headers,
+      requestKey
+    );
     return response.data?.items || response.data || [];
   }
 
   private async loadAllData(
-    baseUrl: string,
+    environment: string,
     headers: Record<string, string>,
     userId: string,
     requestKey: string
@@ -221,21 +252,26 @@ class UserDataService {
 
     const [files, folders, messages, messagesGlobal] = await Promise.allSettled(
       [
-        this.loadFiles(baseUrl, headers, defaultFilters, `${requestKey}_files`),
+        this.loadFiles(
+          environment,
+          headers,
+          defaultFilters,
+          `${requestKey}_files`
+        ),
         this.loadFolders(
-          baseUrl,
+          environment,
           headers,
           defaultFilters,
           `${requestKey}_folders`
         ),
         this.loadMessages(
-          baseUrl,
+          environment,
           headers,
           defaultFilters,
           `${requestKey}_messages`
         ),
         this.loadMessagesGlobal(
-          baseUrl,
+          environment,
           headers,
           defaultFilters,
           `${requestKey}_messages_global`

@@ -29,6 +29,7 @@ export interface EnvironmentConfig {
 
 export interface AppConfig {
   environments: {
+    local: EnvironmentConfig;
     development: EnvironmentConfig;
     production: EnvironmentConfig;
   };

@@ -74,7 +74,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       const baseUrl =
         environment === "production"
           ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
-          : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
+          : environment === "development"
+          ? process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL
+          : process.env.NEXT_PUBLIC_LOCAL_BE_NOTICA_URL;
 
       const params = new URLSearchParams({
         page: pagination.current.toString(),

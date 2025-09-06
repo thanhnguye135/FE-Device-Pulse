@@ -44,10 +44,11 @@ export const OTHER_APP_MODULES: ApiModule[] = [
 ];
 
 export const ENVIRONMENTS: Environment[] = [
-  { value: "production", label: "Production" },
+  { value: "local", label: "Local" },
   { value: "development", label: "Development" },
+  { value: "production", label: "Production" },
 ];
 
-export const DEFAULT_ENVIRONMENT = "development";
+export const DEFAULT_ENVIRONMENT = "local";
 export const DEFAULT_APP_TYPE = "notica";
 export const DEFAULT_MODULE = "files";

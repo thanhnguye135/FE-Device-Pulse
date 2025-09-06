@@ -197,16 +197,17 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
   });
 
   // Use the custom hook for data loading
-  const { handleFilterSearch, handleFilterReset, loadMoreTranscripts } = useUserDataLoader({
-    environment,
-    filesForm,
-    foldersForm,
-    transcriptsForm,
-    messagesForm,
-    messagesGlobalForm,
-    setUserData,
-    setPaginationData,
-  });
+  const { handleFilterSearch, handleFilterReset, loadMoreTranscripts } =
+    useUserDataLoader({
+      environment,
+      filesForm,
+      foldersForm,
+      transcriptsForm,
+      messagesForm,
+      messagesGlobalForm,
+      setUserData,
+      setPaginationData,
+    });
 
   // Handle tab change and load data on demand
   const handleTabChange = useCallback(
@@ -277,7 +278,9 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
         const baseUrl =
           environment === "production"
             ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
-            : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
+            : environment === "development"
+            ? process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL
+            : process.env.NEXT_PUBLIC_LOCAL_BE_NOTICA_URL;
 
         const params = new URLSearchParams({
           page: pagination.current.toString(),
@@ -398,7 +401,9 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       const baseUrl =
         environment === "production"
           ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
-          : process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL;
+          : environment === "development"
+          ? process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL
+          : process.env.NEXT_PUBLIC_LOCAL_BE_NOTICA_URL;
 
       const response = await fetch(
         `${baseUrl}/api/v1/admin/users/change-device-id`,
@@ -1053,7 +1058,10 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       nextCursor: paginationData.transcripts.nextCursor,
                       totalItems: paginationData.transcripts.totalItems,
                       onNext: () => {
-                        if (paginationData.transcripts.nextCursor && selectedUser) {
+                        if (
+                          paginationData.transcripts.nextCursor &&
+                          selectedUser
+                        ) {
                           transcriptsForm.setValue(
                             "cursor",
                             paginationData.transcripts.nextCursor

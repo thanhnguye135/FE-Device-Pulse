@@ -11,6 +11,7 @@ import UserManagement from "../components/EnhancedUserManagement";
 // Hooks
 import { useConfig } from "../hooks/useConfig";
 import { useApiCalls } from "../hooks/useApiCalls";
+import { useEnvironment } from "../hooks/useEnvironment";
 
 // Utils and Constants
 import { DEFAULT_ENVIRONMENT, DEFAULT_APP_TYPE } from "../config/constants";
@@ -20,7 +21,8 @@ const { Title, Text } = Typography;
 export default function DevicePulseApp() {
   // Configuration state
   const [deviceId, setDeviceId] = useState<string>("");
-  const [environment, setEnvironment] = useState<string>(DEFAULT_ENVIRONMENT);
+  const { environment, setEnvironment, isChangingEnvironment } =
+    useEnvironment(DEFAULT_ENVIRONMENT);
   const [selectedAppType, setSelectedAppType] =
     useState<string>(DEFAULT_APP_TYPE);
 
@@ -42,13 +44,17 @@ export default function DevicePulseApp() {
     clearResponses();
   };
 
-  const handleEnvironmentChange = (value: string) => {
-    setEnvironment(value);
-    clearResponses();
+  const handleEnvironmentChange = async (value: string) => {
+    try {
+      await setEnvironment(value);
+      clearResponses();
+    } catch (error) {
+      console.error("Failed to change environment:", error);
+    }
   };
 
   // Loading state
-  if (configLoading) {
+  if (configLoading || isChangingEnvironment) {
     return (
       <AppLayout
         selectedAppType={selectedAppType}
@@ -62,9 +68,16 @@ export default function DevicePulseApp() {
             justifyContent: "center",
             alignItems: "center",
             minHeight: "400px",
+            flexDirection: "column",
+            gap: "16px",
           }}
         >
           <Spin size="large" />
+          {isChangingEnvironment && (
+            <Text type="secondary">
+              Đang chuyển đổi environment và reload cấu hình...
+            </Text>
+          )}
         </div>
       </AppLayout>
     );

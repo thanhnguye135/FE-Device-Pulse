@@ -1,5 +1,5 @@
 import { ApiEndpoint, ApiResponse, QueryParam } from "../types/api";
-import { configService } from "./configService";
+import { getAxiosInstance } from "./axiosService";
 
 export class ApiService {
   async callApi(config: {
@@ -17,7 +17,7 @@ export class ApiService {
       queryParams = {},
     } = config;
 
-    const baseUrl = await configService.getApiUrl(environment);
+    const axiosInstance = await getAxiosInstance(environment);
 
     // Replace path parameters
     let processedPath = endpoint.path;
@@ -25,44 +25,42 @@ export class ApiService {
       processedPath = processedPath.replace(`{${key}}`, value);
     });
 
-    // Build URL with query parameters
-    const url = new URL(`${baseUrl}${processedPath}`);
-    Object.entries(queryParams).forEach(([key, value]) => {
-      if (value.trim()) {
-        url.searchParams.append(key, value);
-      }
-    });
-
-    // Prepare request options
-    const requestOptions: RequestInit = {
-      method: endpoint.method,
-      headers: {
-        "Content-Type": "application/json",
-        "x-device-id": deviceId.trim(),
-        "x-admin-key": "admin-ok",
-      },
+    // Prepare headers
+    const headers = {
+      "x-device-id": deviceId.trim(),
+      "x-admin-key": "admin-ok",
     };
 
-    // Add request body for PATCH requests
+    // Prepare request config
+    const requestConfig: any = {
+      url: processedPath,
+      method: endpoint.method.toLowerCase(),
+      headers,
+      params: {},
+      data: undefined,
+    };
+
+    // Handle query parameters and request body
     if (endpoint.method === "PATCH" && Object.keys(queryParams).length > 0) {
+      // For PATCH requests, send query params as body
       const bodyParams: Record<string, string> = {};
       Object.entries(queryParams).forEach(([key, value]) => {
         if (value.trim()) {
           bodyParams[key] = value.trim();
         }
       });
-      requestOptions.body = JSON.stringify(bodyParams);
+      requestConfig.data = bodyParams;
+    } else {
+      // For other methods, send as query parameters
+      Object.entries(queryParams).forEach(([key, value]) => {
+        if (value.trim()) {
+          requestConfig.params[key] = value.trim();
+        }
+      });
     }
 
-    const response = await fetch(url.toString(), requestOptions);
-
-    if (!response.ok) {
-      throw new Error(
-        `API call failed: ${response.status} ${response.statusText}`
-      );
-    }
-
-    return await response.json();
+    const response = await axiosInstance.request(requestConfig);
+    return response.data;
   }
 
   extractPathParams(path: string): string[] {
