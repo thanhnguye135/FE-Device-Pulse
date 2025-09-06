@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { message } from "antd";
 import { UseFormReturn } from "react-hook-form";
 import axios from "axios";
@@ -73,6 +73,8 @@ export const useUserDataLoader = ({
   setUserData,
   setPaginationData,
 }: UseUserDataLoaderProps) => {
+  // Internal cursor management for transcripts pagination
+  const transcriptsCursorRef = useRef<string | null>(null);
   const getBaseUrl = useCallback(() => {
     if (environment === "production") {
       return process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL;
@@ -199,13 +201,18 @@ export const useUserDataLoader = ({
       const config = getAxiosConfig(deviceId);
       const transcriptsFormData = transcriptsForm.getValues();
 
+      // Reset cursor for initial load, use stored cursor for load more
+      if (!appendData) {
+        transcriptsCursorRef.current = null;
+      }
+
       const params: Record<string, string> = {};
       if (transcriptsFormData.fileId)
         params.fileId = transcriptsFormData.fileId;
       if (transcriptsFormData.isHighlighted)
         params.isHighlighted = transcriptsFormData.isHighlighted;
-      if (transcriptsFormData.cursor)
-        params.cursor = transcriptsFormData.cursor;
+      if (transcriptsCursorRef.current)
+        params.cursor = transcriptsCursorRef.current;
       if (transcriptsFormData.limit) params.limit = transcriptsFormData.limit;
 
       try {
@@ -219,6 +226,14 @@ export const useUserDataLoader = ({
           );
           const transcriptsData = response.data;
 
+          // Debug logging to understand API response structure
+          console.log("📊 Transcripts API Response:", {
+            transcriptsData,
+            appendData,
+            currentCursor: transcriptsCursorRef.current,
+            params,
+          });
+
           const newTranscripts = Array.isArray(transcriptsData.data?.data)
             ? transcriptsData.data.data
             : Array.isArray(transcriptsData.data?.items)
@@ -226,8 +241,7 @@ export const useUserDataLoader = ({
             : Array.isArray(transcriptsData.items)
             ? transcriptsData.items
             : [];
-          const totalItems =
-            transcriptsData.data?.totalItems || transcriptsData.totalItems || 0;
+
           const hasNextPage =
             transcriptsData.data?.hasNextPage ||
             transcriptsData.hasNextPage ||
@@ -237,17 +251,45 @@ export const useUserDataLoader = ({
             transcriptsData.nextCursor ||
             null;
 
+          // Store cursor for next load more request
+          transcriptsCursorRef.current = nextCursor;
+
           setUserData((prev) => ({
             ...prev,
             transcripts: appendData
               ? [...prev.transcripts, ...newTranscripts]
               : newTranscripts,
           }));
-          setPaginationData((prev) => ({
-            ...prev,
-            transcripts: { totalItems, hasNextPage, nextCursor },
-          }));
+
+          // For cursor pagination, calculate totalItems based on current loaded data
+          setPaginationData((prev) => {
+            const currentTotal = appendData
+              ? prev.transcripts.totalItems || 0
+              : 0;
+
+            const newPaginationData = {
+              totalItems: appendData
+                ? currentTotal + newTranscripts.length
+                : newTranscripts.length,
+              hasNextPage,
+              nextCursor,
+            };
+
+            console.log("📊 Updating pagination data:", {
+              appendData,
+              previousTotal: prev.transcripts.totalItems,
+              newTranscriptsLength: newTranscripts.length,
+              newPaginationData,
+            });
+
+            return {
+              ...prev,
+              transcripts: newPaginationData,
+            };
+          });
         } else {
+          // Reset cursor when clearing data
+          transcriptsCursorRef.current = null;
           setUserData((prev) => ({ ...prev, transcripts: [] }));
           setPaginationData((prev) => ({
             ...prev,
@@ -438,7 +480,8 @@ export const useUserDataLoader = ({
           break;
         case "transcripts":
           transcriptsForm.reset();
-          // Clear transcripts data when resetting
+          // Reset cursor and clear transcripts data when resetting
+          transcriptsCursorRef.current = null;
           setUserData((prev) => ({ ...prev, transcripts: [] }));
           setPaginationData((prev) => ({
             ...prev,

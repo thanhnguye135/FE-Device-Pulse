@@ -1023,7 +1023,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
 
       {/* Detail Modal for Transcripts and Messages */}
       <Modal
-        title={`Details for File: ${selectedFileForDetail?.name || "Unknown"}`}
+        title={`${selectedFileForDetail?.title || "Unknown"}`}
         open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
         footer={null}
@@ -1059,13 +1059,9 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                       totalItems: paginationData.transcripts.totalItems,
                       onNext: () => {
                         if (
-                          paginationData.transcripts.nextCursor &&
+                          paginationData.transcripts.hasNextPage &&
                           selectedUser
                         ) {
-                          transcriptsForm.setValue(
-                            "cursor",
-                            paginationData.transcripts.nextCursor
-                          );
                           loadMoreTranscripts(selectedUser.deviceId);
                         }
                       },

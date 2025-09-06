@@ -9,8 +9,10 @@ import {
   Empty,
   Tooltip,
   message,
+  Spin,
 } from "antd";
-import { ReloadOutlined } from "@ant-design/icons";
+import { ReloadOutlined, LoadingOutlined } from "@ant-design/icons";
+import { useScrollLoading } from "../hooks/useScrollLoading";
 
 const { Text } = Typography;
 
@@ -49,6 +51,13 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
   pagination,
   cursorPagination,
 }) => {
+  // Initialize scroll loading for cursor-based pagination (transcripts)
+  const { scrollContainerRef, handleScroll } = useScrollLoading({
+    hasNextPage: cursorPagination?.hasNextPage || false,
+    isLoading: isLoading || false,
+    onLoadMore: cursorPagination?.onNext || (() => {}),
+    threshold: 150, // Load when 150px from bottom
+  });
   // Generate dynamic columns from data
   const generateDynamicColumns = (data: any[]) => {
     if (!data || !Array.isArray(data) || data.length === 0) return [];
@@ -226,63 +235,102 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
         ) : (
-          <Table
-            dataSource={Array.isArray(data) ? data : []}
-            columns={dynamicColumns}
-            pagination={pagination ? {
-              current: pagination.current,
-              pageSize: pagination.pageSize,
-              total: pagination.total,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} items (${pagination.totalPages || Math.ceil(total / pagination.pageSize)} pages)`,
-              onChange: pagination.onChange,
-            } : cursorPagination ? false : false}
-            size="small"
-            scroll={{
-              x: "max-content",
-              y: 400,
-            }}
-            rowKey={(record) =>
-              record.id ||
-              record.userid ||
-              `row-${Math.random().toString(36).substr(2, 9)}`
-            }
-            bordered
+          <div
+            ref={cursorPagination ? scrollContainerRef : undefined}
+            onScroll={cursorPagination ? handleScroll : undefined}
             style={{
-              overflowX: "auto",
-              minWidth: "100%",
+              height: cursorPagination ? 400 : "auto",
+              overflowY: cursorPagination ? "auto" : "visible",
             }}
-            onRow={onRowClick ? (record) => ({
-              onClick: () => onRowClick(record),
-              style: { cursor: 'pointer' }
-            }) : undefined}
-          />
+          >
+            <Table
+              dataSource={Array.isArray(data) ? data : []}
+              columns={dynamicColumns}
+              pagination={
+                pagination
+                  ? {
+                      current: pagination.current,
+                      pageSize: pagination.pageSize,
+                      total: pagination.total,
+                      showSizeChanger: true,
+                      showQuickJumper: true,
+                      showTotal: (total, range) =>
+                        `${range[0]}-${range[1]} of ${total} items (${
+                          pagination.totalPages ||
+                          Math.ceil(total / pagination.pageSize)
+                        } pages)`,
+                      onChange: pagination.onChange,
+                    }
+                  : cursorPagination
+                  ? false
+                  : false
+              }
+              size="small"
+              scroll={{
+                x: "max-content",
+                y: cursorPagination ? undefined : 400, // Let scroll container handle height for cursor pagination
+              }}
+              rowKey={(record) =>
+                record.id ||
+                record.userid ||
+                `row-${Math.random().toString(36).substr(2, 9)}`
+              }
+              bordered
+              style={{
+                overflowX: "auto",
+                minWidth: "100%",
+              }}
+              onRow={
+                onRowClick
+                  ? (record) => ({
+                      onClick: () => onRowClick(record),
+                      style: { cursor: "pointer" },
+                    })
+                  : undefined
+              }
+            />
+
+            {/* Scroll loading indicator for cursor pagination */}
+            {cursorPagination && isLoading && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "16px 0",
+                  borderTop: "1px solid #f0f0f0",
+                }}
+              >
+                <Space>
+                  <Spin
+                    indicator={<LoadingOutlined style={{ fontSize: 16 }} />}
+                  />
+                  <Text type="secondary">Loading more items...</Text>
+                </Space>
+              </div>
+            )}
+          </div>
         )}
-        
-        {/* Cursor-based pagination for transcripts */}
+
+        {/* Status information for cursor-based pagination */}
         {cursorPagination && (
-          <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <div style={{ marginTop: 16, textAlign: "center" }}>
             <Space direction="vertical" size="small">
               <Text type="secondary">
-                Showing {data?.length || 0} of {cursorPagination.totalItems} items
+                Showing {data?.length || 0} items
+                {cursorPagination.hasNextPage
+                  ? " (more available)"
+                  : " (all loaded)"}
               </Text>
-              {cursorPagination.hasNextPage && cursorPagination.nextCursor && (
-                <Button 
-                  onClick={cursorPagination.onNext}
-                  loading={isLoading}
-                  type="primary"
-                  size="small"
-                  disabled={!cursorPagination.nextCursor}
-                >
-                  Load More ({cursorPagination.totalItems - (data?.length || 0)} remaining)
-                </Button>
-              )}
-              {!cursorPagination.hasNextPage && data && data.length > 0 && (
-                <Text type="secondary" style={{ fontStyle: 'italic' }}>
-                  All items loaded
+              {cursorPagination.hasNextPage ? (
+                <Text type="secondary" style={{ fontStyle: "italic" }}>
+                  Scroll down to load more items...
                 </Text>
+              ) : (
+                data &&
+                data.length > 0 && (
+                  <Text type="secondary" style={{ fontStyle: "italic" }}>
+                    ✓ All items loaded
+                  </Text>
+                )
               )}
             </Space>
           </div>

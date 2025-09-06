@@ -85,7 +85,7 @@ const TranscriptsFilter: React.FC<TranscriptsFilterProps> = ({
         {/* Column 1: Filter Fields */}
         <Col xs={24} sm={24} md={18} lg={20} xl={20}>
           <Row gutter={[8, 8]} align="middle">
-            <Col xs={12} sm={8} md={6} lg={6}>
+            <Col xs={12} sm={12} md={8} lg={8}>
               <Input
                 placeholder="Filter by highlights (true/false)"
                 size="small"
@@ -94,16 +94,7 @@ const TranscriptsFilter: React.FC<TranscriptsFilterProps> = ({
                 allowClear
               />
             </Col>
-            <Col xs={12} sm={8} md={4} lg={4}>
-              <Input
-                placeholder="Cursor"
-                size="small"
-                value={watchedValues?.cursor || ""}
-                onChange={(e) => setValue("cursor", e.target.value)}
-                allowClear
-              />
-            </Col>
-            <Col xs={8} sm={6} md={4} lg={3}>
+            <Col xs={12} sm={12} md={8} lg={8}>
               <Input
                 placeholder="Limit"
                 size="small"

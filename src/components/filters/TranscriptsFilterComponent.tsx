@@ -23,7 +23,7 @@ interface TranscriptsFilterComponentProps {
 const defaultValues: TranscriptsFilterForm = {
   fileId: "",
   isHighlighted: "",
-  cursor: "0",
+  cursor: "",
   limit: "10",
 };
 
@@ -33,7 +33,7 @@ const filterFields: FilterFieldConfig[] = [
     label: "File ID *",
     type: "input",
     placeholder: "Enter file ID (required)...",
-    colProps: { xs: 24, sm: 12, md: 8, lg: 6 },
+    colProps: { xs: 24, sm: 12, md: 8, lg: 8 },
   },
   {
     name: "isHighlighted",
@@ -45,14 +45,7 @@ const filterFields: FilterFieldConfig[] = [
       { value: "true", label: "Highlighted" },
       { value: "false", label: "Not Highlighted" },
     ],
-    colProps: { xs: 24, sm: 12, md: 8, lg: 6 },
-  },
-  {
-    name: "cursor",
-    label: "Pagination Cursor",
-    type: "number",
-    placeholder: "Enter pagination cursor (based on orderIndex)...",
-    colProps: { xs: 24, sm: 12, md: 8, lg: 6 },
+    colProps: { xs: 24, sm: 12, md: 8, lg: 8 },
   },
   {
     name: "limit",
@@ -64,7 +57,7 @@ const filterFields: FilterFieldConfig[] = [
       { value: "20", label: "20 results" },
       { value: "50", label: "50 results" },
     ],
-    colProps: { xs: 24, sm: 12, md: 8, lg: 6 },
+    colProps: { xs: 24, sm: 12, md: 8, lg: 8 },
   },
 ];
 
