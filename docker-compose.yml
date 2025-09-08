@@ -1,6 +1,6 @@
 services:
   app:
-    container_name: fe-device-pulse
+    container_name: thanhdev-fe-device-pulse
     build:
       context: .
       dockerfile: Dockerfile
@@ -8,3 +8,10 @@ services:
       - "3000:3000"
     env_file:
       - .env
+    networks:
+      - mynetwork
+    restart: unless-stopped
+
+networks:
+  mynetwork:
+    external: true
