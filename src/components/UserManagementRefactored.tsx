@@ -461,7 +461,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     }
   };
 
-  const handleFileClick = async (file: any) => {
+  const handleFileClick = async (file: FileRecord) => {
     console.log("File clicked:", file);
 
     if (!file.id || typeof file.id !== "string" || file.id.trim() === "") {
