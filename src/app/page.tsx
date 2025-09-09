@@ -6,7 +6,7 @@ import { Card, Space, Typography, Spin, Alert } from "antd";
 // Components
 import { AppLayout } from "../components/AppLayout";
 import { ApiResponses } from "../components/ApiResponses";
-import UserManagement from "../components/EnhancedUserManagement";
+import { NoticaNavigation } from "../components/NoticaNavigation";
 
 // Hooks
 import { useConfig } from "../hooks/useConfig";
@@ -101,9 +101,9 @@ export default function DevicePulseApp() {
       onEnvironmentChange={handleEnvironmentChange}
     >
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
-        {/* User Management - Show when any app is selected */}
+        {/* Notica Navigation - Show when any app is selected */}
         {selectedAppType && environment && (
-          <UserManagement environment={environment} />
+          <NoticaNavigation environment={environment} />
         )}
 
         {/* Welcome Message when no app is selected */}
