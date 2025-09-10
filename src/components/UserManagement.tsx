@@ -18,7 +18,6 @@ import {
 } from "antd";
 import {
   UserOutlined,
-  EyeOutlined,
   SearchOutlined,
   ReloadOutlined,
   MobileOutlined,
@@ -223,24 +222,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         </Tooltip>
       ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      render: (_: unknown, record: User) => (
-        <Space>
-          <Tooltip title="View Details">
-            <Button
-              type="primary"
-              icon={<EyeOutlined />}
-              size="small"
-              onClick={() => loadUserDetails(record)}
-            >
-              Details
-            </Button>
-          </Tooltip>
-        </Space>
-      ),
-    },
   ];
 
   return (
@@ -283,6 +264,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           dataSource={users}
           loading={loading}
           rowKey="id"
+          onRow={(record) => ({
+            onClick: () => loadUserDetails(record),
+            style: { cursor: "pointer" },
+          })}
           pagination={false}
           size="middle"
           style={{ marginBottom: "16px" }}

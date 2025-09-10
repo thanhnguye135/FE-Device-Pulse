@@ -18,7 +18,6 @@ import {
 } from "antd";
 import {
   UserOutlined,
-  EyeOutlined,
   EditOutlined,
   MobileOutlined,
   InfoCircleOutlined,
@@ -591,37 +590,6 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       ),
       width: 100,
     },
-    {
-      title: "Actions",
-      key: "actions",
-      render: (record: User) => (
-        <Space direction="vertical" size={4}>
-          <Button
-            type="primary"
-            icon={<EyeOutlined />}
-            size="small"
-            onClick={() => loadUserDetails(record)}
-            style={{ width: "100%" }}
-          >
-            View Profile
-          </Button>
-          <Button
-            type="default"
-            icon={<EditOutlined />}
-            size="small"
-            onClick={() => {
-              setSelectedUser(record);
-              setDeviceIdChangeVisible(true);
-            }}
-            style={{ width: "100%" }}
-          >
-            Edit Device
-          </Button>
-        </Space>
-      ),
-      width: 120,
-      fixed: "right" as const,
-    },
   ];
 
   // Render user profile view
@@ -1053,6 +1021,10 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
             dataSource={users}
             columns={columns}
             loading={loading}
+            onRow={(record) => ({
+              onClick: () => loadUserDetails(record),
+              style: { cursor: "pointer" },
+            })}
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,
