@@ -30,7 +30,6 @@ import {
   SoundOutlined,
   TeamOutlined,
   CheckSquareOutlined,
-  DownloadOutlined,
 } from "@ant-design/icons";
 
 // Import the extracted components
@@ -73,10 +72,15 @@ interface UserDetails extends User {
 interface FileRecord {
   id?: string;
   title?: string;
-  audio?: string | object;
-  text?: string | object;
-  speakers?: string | object | unknown[];
-  actionItems?: string | object | unknown[];
+  audioFile?: { filePath?: string } | null;
+  textFiles?: Array<{
+    createdAt?: string;
+    updatedAt?: string;
+    deletedAt?: string | null;
+    filePath?: string;
+  }>;
+  speakers?: unknown[] | string | null;
+  actionItems?: unknown[] | string | null;
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
@@ -1156,10 +1160,10 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                   <Card title="audioFile">
                     {loadingFileDetails || !selectedFileForDetail ? (
                       <Spin />
-                    ) : (selectedFileForDetail as any)?.audioFile ? (
+                    ) : selectedFileForDetail?.audioFile ? (
                       <pre style={{ margin: 0 }}>
                         {JSON.stringify(
-                          (selectedFileForDetail as any).audioFile,
+                          selectedFileForDetail.audioFile,
                           null,
                           2
                         )}
@@ -1182,12 +1186,10 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                   <Card title="textFiles">
                     {loadingFileDetails || !selectedFileForDetail ? (
                       <Spin />
-                    ) : Array.isArray(
-                        (selectedFileForDetail as any)?.textFiles
-                      ) ? (
+                    ) : Array.isArray(selectedFileForDetail?.textFiles) ? (
                       <pre style={{ margin: 0 }}>
                         {JSON.stringify(
-                          (selectedFileForDetail as any).textFiles,
+                          selectedFileForDetail.textFiles,
                           null,
                           2
                         )}
@@ -1213,7 +1215,10 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                     ) : (
                       <pre style={{ margin: 0 }}>
                         {JSON.stringify(
-                          (selectedFileForDetail as any)?.speakers ?? [],
+                          (selectedFileForDetail?.speakers as
+                            | unknown[]
+                            | string
+                            | null) ?? [],
                           null,
                           2
                         )}
@@ -1237,7 +1242,10 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                     ) : (
                       <pre style={{ margin: 0 }}>
                         {JSON.stringify(
-                          (selectedFileForDetail as any)?.actionItems ?? [],
+                          (selectedFileForDetail?.actionItems as
+                            | unknown[]
+                            | string
+                            | null) ?? [],
                           null,
                           2
                         )}
