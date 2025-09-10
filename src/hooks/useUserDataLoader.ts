@@ -151,6 +151,50 @@ export const useUserDataLoader = ({
     [getBaseUrl, getAxiosConfig, filesForm, setUserData, setPaginationData]
   );
 
+  const loadFileDetailsData = useCallback(
+    async (
+      deviceId: string,
+      fileId: string,
+      includeFields: Array<"text" | "actionItems" | "speakers" | "audio"> = [
+        "text",
+        "actionItems",
+        "speakers",
+        "audio",
+      ]
+    ) => {
+      // Purpose: fetch single file details by id with include fields
+      const baseUrl = getBaseUrl();
+      const config = getAxiosConfig(deviceId);
+      if (!fileId || fileId.trim() === "") return null;
+
+      try {
+        const params: Record<string, string> = {
+          id: fileId,
+          include: includeFields.join(","),
+          limit: "1",
+          page: "1",
+        };
+
+        const response = await axios.get(`${baseUrl}/api/v1/admin/files`, {
+          ...config,
+          params,
+        });
+
+        const filesData = response.data;
+        const items = Array.isArray(filesData.data?.items)
+          ? filesData.data.items
+          : Array.isArray(filesData.items)
+          ? filesData.items
+          : [];
+        return items[0] || null;
+      } catch (error) {
+        console.error("Error loading file details:", error);
+        throw error;
+      }
+    },
+    [getBaseUrl, getAxiosConfig]
+  );
+
   const loadFoldersData = useCallback(
     async (deviceId: string) => {
       const baseUrl = getBaseUrl();
@@ -595,6 +639,7 @@ export const useUserDataLoader = ({
     loadTranscriptsData,
     loadMessagesData,
     loadMessagesGlobalData,
+    loadFileDetailsData,
     handleFilterSearch,
     handleFilterReset,
     loadMoreTranscripts,

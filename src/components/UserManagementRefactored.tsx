@@ -26,6 +26,11 @@ import {
   FolderOutlined,
   AudioOutlined,
   MessageOutlined,
+  FileTextOutlined,
+  SoundOutlined,
+  TeamOutlined,
+  CheckSquareOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 
 // Import the extracted components
@@ -67,6 +72,13 @@ interface UserDetails extends User {
 
 interface FileRecord {
   id?: string;
+  title?: string;
+  audio?: string | object;
+  text?: string | object;
+  speakers?: string | object | unknown[];
+  actionItems?: string | object | unknown[];
+  createdAt?: string;
+  updatedAt?: string;
   [key: string]: unknown;
 }
 
@@ -143,6 +155,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedFileForDetail, setSelectedFileForDetail] =
     useState<FileRecord | null>(null);
+  const [loadingFileDetails, setLoadingFileDetails] = useState(false);
 
   // React Hook Form instances
   const filesForm = useForm<FilesFilterForm>({
@@ -471,31 +484,99 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
     if (!selectedUser) return;
 
     // Prevent multiple clicks while loading
-    if (userDetailsLoading) {
+    if (userDetailsLoading || loadingFileDetails) {
       console.log("Already loading file details, ignoring click");
       return;
     }
 
-    // Set file and show modal
+    // Show modal immediately with basic file info
     setSelectedFileForDetail(file);
     setDetailModalVisible(true);
     setUserDetailsLoading(true);
+    setLoadingFileDetails(true);
 
     try {
+      // Fetch detailed file data with audio, text, speakers, actionItems
+      const detailedFileData = await fetchDetailedFileData(
+        file.id,
+        selectedUser.deviceId
+      );
+
+      // Update the selected file with detailed data
+      setSelectedFileForDetail(detailedFileData);
+      setLoadingFileDetails(false);
+
       // Set fileId in forms
       transcriptsForm.setValue("fileId", file.id);
       messagesForm.setValue("fileId", file.id);
 
       // Fetch data only for transcripts and messages
-      // The activeTab change will be handled separately to avoid double loading
       await Promise.all([
         handleFilterSearch("transcripts", selectedUser.deviceId),
         handleFilterSearch("messages", selectedUser.deviceId),
       ]);
     } catch (error) {
       console.error("Error loading file details:", error);
+      setLoadingFileDetails(false);
     } finally {
       setUserDetailsLoading(false);
+    }
+  };
+
+  // Function to fetch detailed file data
+  const fetchDetailedFileData = async (
+    fileId: string,
+    deviceId: string
+  ): Promise<FileRecord> => {
+    try {
+      const baseUrl =
+        environment === "production"
+          ? process.env.NEXT_PUBLIC_PROD_BE_NOTICA_URL
+          : environment === "development"
+          ? process.env.NEXT_PUBLIC_DEV_BE_NOTICA_URL
+          : process.env.NEXT_PUBLIC_LOCAL_BE_NOTICA_URL;
+
+      const params = new URLSearchParams({
+        deviceId: deviceId,
+        id: fileId,
+        include: "audio,text,speakers,actionItems",
+        limit: "1",
+      });
+
+      const response = await fetch(`${baseUrl}/api/v1/admin/files?${params}`, {
+        headers: {
+          "x-admin-key": process.env.NEXT_PUBLIC_ADMIN_API_KEY || "",
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Return the first file from the result, or the original file if no detailed data
+      if (result.data && result.data.length > 0) {
+        const fileData = result.data[0];
+
+        // Map the API response structure to what the component expects
+        return {
+          ...fileData,
+          audio: fileData.audioFile?.filePath || null,
+          text:
+            fileData.textFiles && fileData.textFiles.length > 0
+              ? fileData.textFiles[0].filePath
+              : null,
+          // speakers and actionItems should already be in the correct format
+        };
+      } else {
+        throw new Error("No detailed file data found");
+      }
+    } catch (error) {
+      console.error("Error fetching detailed file data:", error);
+      // Return the original file data if detailed fetch fails
+      return selectedFileForDetail || {};
     }
   };
 
@@ -1002,7 +1083,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
               placeholder="Search by Device ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onSearch={(value) => {
+              onSearch={(value: string) => {
                 setSearchQuery(value);
                 setPagination((prev) => ({ ...prev, current: 1 })); // Reset to first page
               }}
@@ -1021,7 +1102,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
             dataSource={users}
             columns={columns}
             loading={loading}
-            onRow={(record) => ({
+            onRow={(record: User) => ({
               onClick: () => loadUserDetails(record),
               style: { cursor: "pointer" },
             })}
@@ -1031,9 +1112,9 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
               total: pagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
-              showTotal: (total, range) =>
+              showTotal: (total: number, range: [number, number]) =>
                 `${range[0]}-${range[1]} of ${total} items`,
-              onChange: (page, pageSize) => {
+              onChange: (page: number, pageSize?: number) => {
                 setPagination({
                   current: page,
                   pageSize: pageSize || 10,
@@ -1043,7 +1124,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
             }}
             size="small"
             scroll={{ x: 1200 }}
-            rowKey={(record) =>
+            rowKey={(record: User) =>
               record.deviceId ||
               record.id ||
               `user-${Math.random().toString(36).substr(2, 9)}`
@@ -1058,7 +1139,7 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
         renderUserProfile()
       )}
 
-      {/* Detail Modal for Transcripts and Messages */}
+      {/* Detail Modal for File Details, Transcripts and Messages */}
       <Modal
         title={`${selectedFileForDetail?.title || "Unknown"}`}
         open={detailModalVisible}
@@ -1070,6 +1151,514 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
         <Spin spinning={userDetailsLoading}>
           <Tabs
             items={[
+              {
+                key: "text",
+                label: (
+                  <Space>
+                    <FileTextOutlined />
+                    Text Content
+                  </Space>
+                ),
+                children: (
+                  <Card title="Text Content" style={{ marginBottom: 16 }}>
+                    {loadingFileDetails ? (
+                      <div style={{ textAlign: "center", padding: 40 }}>
+                        <Spin size="large" />
+                        <div style={{ marginTop: 16 }}>
+                          <Text type="secondary">Loading text content...</Text>
+                        </div>
+                      </div>
+                    ) : selectedFileForDetail?.text ? (
+                      <div
+                        style={{
+                          padding: 16,
+                          background: "#f9f9f9",
+                          borderRadius: 8,
+                          border: "1px solid #e1e8ed",
+                          minHeight: 300,
+                          maxHeight: 500,
+                          overflow: "auto",
+                        }}
+                      >
+                        {typeof selectedFileForDetail.text === "string" ? (
+                          // Check if it's a URL
+                          selectedFileForDetail.text.startsWith("http") ? (
+                            <div style={{ textAlign: "center", padding: 20 }}>
+                              <FileTextOutlined
+                                style={{
+                                  fontSize: 48,
+                                  color: "#1890ff",
+                                  marginBottom: 16,
+                                }}
+                              />
+                              <div style={{ marginBottom: 16 }}>
+                                <Text strong>Text Transcript File</Text>
+                              </div>
+                              <Button
+                                type="primary"
+                                icon={<DownloadOutlined />}
+                                href={selectedFileForDetail.text}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                Download Transcript
+                              </Button>
+                              <div style={{ marginTop: 8 }}>
+                                <Text
+                                  type="secondary"
+                                  style={{ fontSize: "12px" }}
+                                >
+                                  {selectedFileForDetail.text}
+                                </Text>
+                              </div>
+                            </div>
+                          ) : (
+                            <Text
+                              style={{
+                                whiteSpace: "pre-wrap",
+                                fontSize: "14px",
+                              }}
+                            >
+                              {selectedFileForDetail.text}
+                            </Text>
+                          )
+                        ) : (
+                          <pre style={{ fontSize: "12px", margin: 0 }}>
+                            {JSON.stringify(
+                              selectedFileForDetail.text,
+                              null,
+                              2
+                            )}
+                          </pre>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: 40 }}>
+                        <FileTextOutlined
+                          style={{
+                            fontSize: 48,
+                            color: "#d9d9d9",
+                            marginBottom: 16,
+                          }}
+                        />
+                        <div>
+                          <Text type="secondary" style={{ fontSize: "16px" }}>
+                            No text content available
+                          </Text>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ),
+              },
+              {
+                key: "audio",
+                label: (
+                  <Space>
+                    <SoundOutlined />
+                    Audio
+                  </Space>
+                ),
+                children: (
+                  <Card title="Audio Content" style={{ marginBottom: 16 }}>
+                    {loadingFileDetails ? (
+                      <div style={{ textAlign: "center", padding: 40 }}>
+                        <Spin size="large" />
+                        <div style={{ marginTop: 16 }}>
+                          <Text type="secondary">Loading audio content...</Text>
+                        </div>
+                      </div>
+                    ) : selectedFileForDetail?.audio ? (
+                      <div style={{ padding: 16 }}>
+                        {typeof selectedFileForDetail.audio === "string" ? (
+                          selectedFileForDetail.audio.startsWith("http") ? (
+                            <div style={{ textAlign: "center" }}>
+                              <audio
+                                controls
+                                style={{
+                                  width: "100%",
+                                  maxWidth: 600,
+                                  marginBottom: 16,
+                                }}
+                              >
+                                <source src={selectedFileForDetail.audio} />
+                                Your browser does not support the audio element.
+                              </audio>
+                              <div>
+                                <Text strong>Audio URL:</Text>
+                                <br />
+                                <Text
+                                  copyable={{
+                                    text: selectedFileForDetail.audio,
+                                  }}
+                                  style={{ fontSize: "12px" }}
+                                >
+                                  {selectedFileForDetail.audio}
+                                </Text>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              style={{
+                                padding: 16,
+                                background: "#f6f8fa",
+                                borderRadius: 8,
+                                border: "1px solid #e1e8ed",
+                              }}
+                            >
+                              <Text>{selectedFileForDetail.audio}</Text>
+                            </div>
+                          )
+                        ) : (
+                          <div
+                            style={{
+                              padding: 16,
+                              background: "#f6f8fa",
+                              borderRadius: 8,
+                              border: "1px solid #e1e8ed",
+                              maxHeight: 400,
+                              overflow: "auto",
+                            }}
+                          >
+                            <pre style={{ fontSize: "12px", margin: 0 }}>
+                              {JSON.stringify(
+                                selectedFileForDetail.audio,
+                                null,
+                                2
+                              )}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: 40 }}>
+                        <SoundOutlined
+                          style={{
+                            fontSize: 48,
+                            color: "#d9d9d9",
+                            marginBottom: 16,
+                          }}
+                        />
+                        <div>
+                          <Text type="secondary" style={{ fontSize: "16px" }}>
+                            No audio content available
+                          </Text>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ),
+              },
+              {
+                key: "speakers",
+                label: (
+                  <Space>
+                    <TeamOutlined />
+                    Speakers
+                  </Space>
+                ),
+                children: (
+                  <Card
+                    title="Speakers Information"
+                    style={{ marginBottom: 16 }}
+                  >
+                    {loadingFileDetails ? (
+                      <div style={{ textAlign: "center", padding: 40 }}>
+                        <Spin size="large" />
+                        <div style={{ marginTop: 16 }}>
+                          <Text type="secondary">
+                            Loading speakers information...
+                          </Text>
+                        </div>
+                      </div>
+                    ) : selectedFileForDetail?.speakers ? (
+                      <div style={{ padding: 16 }}>
+                        {Array.isArray(selectedFileForDetail.speakers) ? (
+                          <div>
+                            <Title level={5} style={{ marginBottom: 16 }}>
+                              Identified Speakers (
+                              {
+                                (selectedFileForDetail.speakers as unknown[])
+                                  .length
+                              }
+                              )
+                            </Title>
+                            <div style={{ display: "grid", gap: 12 }}>
+                              {(
+                                selectedFileForDetail.speakers as unknown[]
+                              ).map((speaker: unknown, index: number) => (
+                                <Card
+                                  key={index}
+                                  size="small"
+                                  style={{
+                                    backgroundColor: "#f0f8ff",
+                                    border: "1px solid #b3d8ff",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 12,
+                                    }}
+                                  >
+                                    <Avatar
+                                      style={{
+                                        backgroundColor: "#1890ff",
+                                        color: "white",
+                                      }}
+                                      size="small"
+                                    >
+                                      {index + 1}
+                                    </Avatar>
+                                    <div style={{ flex: 1 }}>
+                                      <Text strong>Speaker {index + 1}</Text>
+                                      <br />
+                                      <Text style={{ fontSize: "12px" }}>
+                                        {typeof speaker === "object"
+                                          ? JSON.stringify(speaker, null, 2)
+                                          : String(speaker)}
+                                      </Text>
+                                    </div>
+                                  </div>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: 16,
+                              background: "#f6f8fa",
+                              borderRadius: 8,
+                              border: "1px solid #e1e8ed",
+                            }}
+                          >
+                            <Text>
+                              {typeof selectedFileForDetail.speakers ===
+                              "string"
+                                ? selectedFileForDetail.speakers
+                                : JSON.stringify(
+                                    selectedFileForDetail.speakers,
+                                    null,
+                                    2
+                                  )}
+                            </Text>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: 40 }}>
+                        <TeamOutlined
+                          style={{
+                            fontSize: 48,
+                            color: "#d9d9d9",
+                            marginBottom: 16,
+                          }}
+                        />
+                        <div>
+                          <Text type="secondary" style={{ fontSize: "16px" }}>
+                            No speakers information available
+                          </Text>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ),
+              },
+              {
+                key: "action-items",
+                label: (
+                  <Space>
+                    <CheckSquareOutlined />
+                    Action Items
+                  </Space>
+                ),
+                children: (
+                  <Card title="Action Items" style={{ marginBottom: 16 }}>
+                    {loadingFileDetails ? (
+                      <div style={{ textAlign: "center", padding: 40 }}>
+                        <Spin size="large" />
+                        <div style={{ marginTop: 16 }}>
+                          <Text type="secondary">Loading action items...</Text>
+                        </div>
+                      </div>
+                    ) : selectedFileForDetail?.actionItems ? (
+                      <div style={{ padding: 16 }}>
+                        {Array.isArray(selectedFileForDetail.actionItems) ? (
+                          <div>
+                            <Title level={5} style={{ marginBottom: 16 }}>
+                              Action Items (
+                              {
+                                (selectedFileForDetail.actionItems as unknown[])
+                                  .length
+                              }
+                              )
+                            </Title>
+                            <div style={{ display: "grid", gap: 12 }}>
+                              {(
+                                selectedFileForDetail.actionItems as unknown[]
+                              ).map((item: unknown, index: number) => {
+                                // Type assertion for action item object
+                                const actionItem = item as {
+                                  id?: string;
+                                  content?: string;
+                                  evidence?: string;
+                                  priority?: string;
+                                  assignedTo?: string;
+                                  dueDate?: string;
+                                  isCompleted?: boolean;
+                                  sourceType?: string;
+                                };
+
+                                return (
+                                  <Card
+                                    key={actionItem.id || index}
+                                    size="small"
+                                    style={{
+                                      backgroundColor: actionItem.isCompleted
+                                        ? "#f6ffed"
+                                        : "#fff7e6",
+                                      border: `1px solid ${
+                                        actionItem.isCompleted
+                                          ? "#b7eb8f"
+                                          : "#ffd591"
+                                      }`,
+                                      transition: "all 0.3s ease",
+                                    }}
+                                    hoverable
+                                  >
+                                    <div>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "flex-start",
+                                          gap: 12,
+                                          marginBottom: 8,
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            minWidth: 24,
+                                            height: 24,
+                                            borderRadius: "50%",
+                                            backgroundColor:
+                                              actionItem.isCompleted
+                                                ? "#52c41a"
+                                                : "#fa8c16",
+                                            color: "white",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "12px",
+                                            fontWeight: "bold",
+                                          }}
+                                        >
+                                          {index + 1}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                          <Text
+                                            strong
+                                            style={{
+                                              fontSize: "14px",
+                                              display: "block",
+                                              marginBottom: 4,
+                                            }}
+                                          >
+                                            {actionItem.content || "No content"}
+                                          </Text>
+                                          {actionItem.evidence && (
+                                            <Text
+                                              type="secondary"
+                                              style={{
+                                                fontSize: "12px",
+                                                display: "block",
+                                                marginBottom: 4,
+                                              }}
+                                            >
+                                              <strong>Evidence:</strong>{" "}
+                                              {actionItem.evidence}
+                                            </Text>
+                                          )}
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: 8,
+                                              flexWrap: "wrap",
+                                            }}
+                                          >
+                                            {actionItem.priority && (
+                                              <Tag
+                                                color={
+                                                  actionItem.priority === "high"
+                                                    ? "red"
+                                                    : actionItem.priority ===
+                                                      "medium"
+                                                    ? "orange"
+                                                    : "blue"
+                                                }
+                                              >
+                                                {actionItem.priority}
+                                              </Tag>
+                                            )}
+                                            {actionItem.sourceType && (
+                                              <Tag color="geekblue">
+                                                {actionItem.sourceType}
+                                              </Tag>
+                                            )}
+                                            {actionItem.isCompleted && (
+                                              <Tag color="green">Completed</Tag>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: 16,
+                              background: "#f6ffed",
+                              borderRadius: 8,
+                              border: "1px solid #b7eb8f",
+                            }}
+                          >
+                            <Text>
+                              {typeof selectedFileForDetail.actionItems ===
+                              "string"
+                                ? selectedFileForDetail.actionItems
+                                : JSON.stringify(
+                                    selectedFileForDetail.actionItems,
+                                    null,
+                                    2
+                                  )}
+                            </Text>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: 40 }}>
+                        <CheckSquareOutlined
+                          style={{
+                            fontSize: 48,
+                            color: "#d9d9d9",
+                            marginBottom: 16,
+                          }}
+                        />
+                        <div>
+                          <Text type="secondary" style={{ fontSize: "16px" }}>
+                            No action items available
+                          </Text>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ),
+              },
               {
                 key: "transcripts",
                 label: (
