@@ -13,7 +13,8 @@ export const formatDate = (date: string | null | undefined) => {
 
 // Copy handler functions
 export const createCopyHandler = (value: any) => {
-  return () => {
+  return (e: React.MouseEvent) => {
+    e.stopPropagation();
     const textValue =
       typeof value === "object"
         ? JSON.stringify(value, null, 2)

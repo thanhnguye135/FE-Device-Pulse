@@ -25,15 +25,8 @@ export const SpeechToTextConfigPage: React.FC<SpeechToTextConfigPageProps> = ({
     limit: 10,
   });
 
-  const {
-    configs,
-    loading,
-    error,
-    pagination,
-    fetchConfigs,
-    updateFilter,
-    resetFilter,
-  } = useSpeechToTextConfigs(filter);
+  const { configs, loading, pagination, updateFilter } =
+    useSpeechToTextConfigs(filter);
 
   const handleFilterChange = (newFilter: SpeechToTextConfigFilter) => {
     setFilter(newFilter);
@@ -43,7 +36,7 @@ export const SpeechToTextConfigPage: React.FC<SpeechToTextConfigPageProps> = ({
   const handleFilterReset = () => {
     const defaultFilter = { page: 1, limit: 10 };
     setFilter(defaultFilter);
-    resetFilter();
+    updateFilter(defaultFilter);
   };
 
   return (

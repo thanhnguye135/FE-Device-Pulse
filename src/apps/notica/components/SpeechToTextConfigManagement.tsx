@@ -14,10 +14,8 @@ import {
   Col,
   Switch,
   Tooltip,
-  Spin,
   Form,
   Select,
-  InputNumber,
   message,
   Popconfirm,
 } from "antd";
@@ -30,7 +28,6 @@ import {
   SearchOutlined,
   ReloadOutlined,
   SettingOutlined,
-  InfoCircleOutlined,
 } from "@ant-design/icons";
 import {
   SpeechToTextConfig,
@@ -126,16 +123,8 @@ export const SpeechToTextConfigManagement: React.FC<
   );
   const [form] = Form.useForm();
 
-  const {
-    configs,
-    loading,
-    error,
-    filter,
-    pagination,
-    fetchConfigs,
-    updateFilter,
-    resetFilter,
-  } = useSpeechToTextConfigs({ page: 1, limit: 10 });
+  const { configs, loading, pagination, fetchConfigs, updateFilter } =
+    useSpeechToTextConfigs({ page: 1, limit: 10 });
 
   const { createConfig, loading: creating } = useCreateSpeechToTextConfig();
   const { updateConfig, loading: updating } = useUpdateSpeechToTextConfig();
@@ -162,9 +151,11 @@ export const SpeechToTextConfigManagement: React.FC<
     setFormVisible(true);
   };
 
-  const handleFormSubmit = async (values: any) => {
+  const handleFormSubmit = async (
+    values: CreateSpeechToTextConfigRequest & { config: string }
+  ) => {
     try {
-      const configData: CreateSpeechToTextConfigRequest | any = {
+      const configData: CreateSpeechToTextConfigRequest = {
         ...values,
         config: values.config ? JSON.parse(values.config) : {},
         isActive: values.isActive ?? true,
@@ -180,7 +171,7 @@ export const SpeechToTextConfigManagement: React.FC<
 
       setFormVisible(false);
       fetchConfigs();
-    } catch (error) {
+    } catch {
       message.error("Failed to save configuration");
     }
   };
@@ -190,7 +181,7 @@ export const SpeechToTextConfigManagement: React.FC<
       await deleteConfig(id);
       message.success("Configuration deleted successfully");
       fetchConfigs();
-    } catch (error) {
+    } catch {
       message.error("Failed to delete configuration");
     }
   };
@@ -200,7 +191,7 @@ export const SpeechToTextConfigManagement: React.FC<
       await toggleActive(id);
       message.success("Status updated successfully");
       fetchConfigs();
-    } catch (error) {
+    } catch {
       message.error("Failed to update status");
     }
   };
@@ -572,7 +563,7 @@ export const SpeechToTextConfigManagement: React.FC<
                   try {
                     JSON.parse(value);
                     return Promise.resolve();
-                  } catch (error) {
+                  } catch {
                     return Promise.reject(new Error("Invalid JSON format"));
                   }
                 },

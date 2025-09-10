@@ -105,7 +105,8 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
 
           if (typeof value === "string") {
             if (isIdColumn) {
-              const handleCopy = () => {
+              const handleCopy = (e: React.MouseEvent) => {
+                e.stopPropagation();
                 navigator.clipboard.writeText(value);
               };
               return (
@@ -129,7 +130,8 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
 
             // For non-ID long strings
             if (value.length > 50) {
-              const handleCopy = () => {
+              const handleCopy = (e: React.MouseEvent) => {
+                e.stopPropagation();
                 navigator.clipboard.writeText(value);
               };
 
@@ -152,7 +154,8 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
           // Handle non-string values that might be objects
           if (value && typeof value === "object") {
             const stringValue = JSON.stringify(value);
-            const handleCopy = () => {
+            const handleCopy = (e: React.MouseEvent) => {
+              e.stopPropagation();
               navigator.clipboard.writeText(stringValue);
             };
 
@@ -174,7 +177,8 @@ const DataTableSection: React.FC<DataTableSectionProps> = ({
           }
 
           // For numbers and short strings, add copy on click as well
-          const handleCopy = () => {
+          const handleCopy = (e: React.MouseEvent) => {
+            e.stopPropagation();
             navigator.clipboard.writeText(String(value));
           };
 

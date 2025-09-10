@@ -508,7 +508,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       key: "userId",
       render: (userid: string, record: User) => {
         const userIdValue = userid || record.id || "Not Set";
-        const handleCopy = () => {
+        const handleCopy = (e: React.MouseEvent) => {
+          e.stopPropagation();
           if (userIdValue && userIdValue !== "Not Set") {
             navigator.clipboard.writeText(userIdValue);
           }
@@ -547,7 +548,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
       dataIndex: "deviceId",
       key: "deviceId",
       render: (deviceId: string) => {
-        const handleCopy = () => {
+        const handleCopy = (e: React.MouseEvent) => {
+          e.stopPropagation();
           navigator.clipboard.writeText(deviceId);
         };
 
@@ -685,7 +687,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         userDetails?.userId ||
                         "Not Set"
                     );
-                    const handleCopy = () => {
+                    const handleCopy = (e: React.MouseEvent) => {
+                      e.stopPropagation();
                       if (userIdValue && userIdValue !== "Not Set") {
                         navigator.clipboard.writeText(userIdValue);
                       }
@@ -720,7 +723,8 @@ const UserManagementRefactored: React.FC<UserManagementProps> = ({
                         const deviceIdValue = String(
                           userDetails?.deviceId || "Not Set"
                         );
-                        const handleCopy = () => {
+                        const handleCopy = (e: React.MouseEvent) => {
+                          e.stopPropagation();
                           if (deviceIdValue && deviceIdValue !== "Not Set") {
                             navigator.clipboard.writeText(deviceIdValue);
                           }

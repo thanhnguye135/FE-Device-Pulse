@@ -6,7 +6,7 @@ export interface SpeechToTextConfig {
   platform: string;
   name: string;
   description: string;
-  config: Record<string, any>; // JSON configuration
+  config: Record<string, unknown>; // JSON configuration
   isActive: boolean;
   rest: string;
   createdAt?: string;
@@ -19,7 +19,7 @@ export interface CreateSpeechToTextConfigRequest {
   platform: string;
   name: string;
   description: string;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   isActive: boolean;
   rest: string;
 }

@@ -4,7 +4,6 @@ import {
   CreateSpeechToTextConfigRequest,
   UpdateSpeechToTextConfigRequest,
   SpeechToTextConfigFilter,
-  SpeechToTextConfigResponse,
 } from "../types/speechToText";
 import { speechToTextService } from "../services/speechToTextService";
 

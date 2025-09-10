@@ -1,15 +1,5 @@
 import React from "react";
-import {
-  Card,
-  Form,
-  Row,
-  Col,
-  Select,
-  Input,
-  Button,
-  Space,
-  Typography,
-} from "antd";
+import { Card, Form, Row, Col, Select, Input, Button, Space } from "antd";
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -17,7 +7,6 @@ import {
 } from "@ant-design/icons";
 import { SpeechToTextConfigFilter } from "../../types/speechToText";
 
-const { Title } = Typography;
 const { Option } = Select;
 
 interface SpeechToTextConfigFilterProps {
@@ -31,7 +20,7 @@ export const SpeechToTextConfigFilterComponent: React.FC<
 > = ({ onFilterChange, onReset, loading = false }) => {
   const [form] = Form.useForm();
 
-  const handleSubmit = (values: any) => {
+  const handleSubmit = (values: Partial<SpeechToTextConfigFilter>) => {
     const filter: SpeechToTextConfigFilter = {
       page: 1,
       limit: 10,
